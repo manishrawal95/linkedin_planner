@@ -208,7 +208,3 @@ Outputs multiple variants, each with a different hook style, full body, CTA, and
 | `ANTHROPIC_API_KEY` | If anthropic | Anthropic API key |
 | `HOST` | No | Server host (default: `127.0.0.1`) |
 | `PORT` | No | Server port (default: `8200`) |
-
-## License
-
-MIT
