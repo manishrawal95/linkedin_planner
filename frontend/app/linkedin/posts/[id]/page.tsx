@@ -36,61 +36,7 @@ import {
 } from "recharts";
 import MetricsForm from "../../components/MetricsForm";
 import LinkedInPreview from "../../components/LinkedInPreview";
-
-/* ── Types ────────────────────────────────────────────────────── */
-
-interface Post {
-  id: number;
-  author: string;
-  content: string;
-  post_url: string | null;
-  post_type: string;
-  hook_line: string | null;
-  cta_type: string;
-  word_count: number;
-  posted_at: string | null;
-  pillar_id: number | null;
-  series_id: number | null;
-  topic_tags: string;
-  created_at: string;
-  updated_at: string;
-  classification?: string | null;
-}
-
-interface MetricSnapshot {
-  id: number;
-  post_id: number;
-  impressions: number;
-  members_reached: number;
-  profile_viewers: number;
-  followers_gained: number;
-  likes: number;
-  comments: number;
-  reposts: number;
-  saves: number;
-  sends: number;
-  engagement_score: number;
-  snapshot_type: string | null;
-  snapshot_at: string;
-}
-
-interface Pillar {
-  id: number;
-  name: string;
-  color: string;
-  description: string | null;
-}
-
-interface Learning {
-  id: number;
-  post_id: number | null;
-  insight: string;
-  category: string;
-  impact: string;
-  confidence: number;
-  times_confirmed: number;
-  created_at: string;
-}
+import type { Post, MetricSnapshot, Pillar, Learning } from "@/types/linkedin";
 
 /* ── Constants ────────────────────────────────────────────────── */
 
@@ -113,7 +59,7 @@ const TYPE_COLORS: Record<string, string> = {
   text: "bg-gray-100 text-gray-600",
   carousel: "bg-orange-100 text-orange-700",
   "personal image": "bg-emerald-100 text-emerald-700",
-  "Social Proof Image": "bg-teal-100 text-teal-700",
+  "social proof image": "bg-teal-100 text-teal-700",
   image: "bg-emerald-100 text-emerald-700",
   poll: "bg-cyan-100 text-cyan-700",
   video: "bg-red-100 text-red-700",
@@ -160,8 +106,8 @@ export default function PostDetailPage() {
       const res = await fetch("/api/linkedin/pillars");
       const data = await res.json();
       setPillars(data.pillars || []);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("PostDetailPage.fetchPillars: GET /api/linkedin/pillars failed:", err);
     }
   }, []);
 
@@ -171,8 +117,8 @@ export default function PostDetailPage() {
       const data = await res.json();
       const all: Learning[] = data.learnings || [];
       setLearnings(all.filter((l) => l.post_id === Number(id)));
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("PostDetailPage.fetchLearnings: GET /api/linkedin/learnings failed:", err);
     }
   }, [id]);
 
@@ -210,7 +156,8 @@ export default function PostDetailPage() {
       setAnalyzeResult({ classification: data.classification, learnings_extracted: data.learnings_extracted });
       fetchLearnings();
       fetchPost();
-    } catch {
+    } catch (err) {
+      console.error(`PostDetailPage.handleAnalyze: POST /api/linkedin/analyze/${id} failed:`, err);
       setAnalyzeResult(null);
     } finally {
       setAnalyzing(false);

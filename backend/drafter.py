@@ -124,14 +124,13 @@ async def generate_drafts(
     result = await generate(prompt_text, system=prompts.SYSTEM_DRAFTER)
 
     try:
-        text = result.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-        variants = json.loads(text)
+        from backend.utils import parse_llm_json
+        variants = parse_llm_json(result)
         if not isinstance(variants, list):
             variants = [variants]
-    except (json.JSONDecodeError, IndexError):
-        logger.warning("Failed to parse draft variants: %s", result[:200])
+    except (json.JSONDecodeError, IndexError, ValueError):
+        logger.warning("Failed to parse draft variants: %s", result[:200],
+                        extra={"action": "Check LLM prompt format in prompts.GENERATE_DRAFT."})
         variants = [{"hook_variant": "default", "content": result, "suggested_hashtags": []}]
 
     conn = get_conn()
@@ -157,10 +156,8 @@ async def extract_hook_from_post(content: str) -> dict:
     result = await generate(prompt_text)
 
     try:
-        text = result.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-        return json.loads(text)
-    except (json.JSONDecodeError, IndexError):
+        from backend.utils import parse_llm_json
+        return parse_llm_json(result)
+    except (json.JSONDecodeError, IndexError, ValueError):
         first_line = content.split("\n")[0].strip()
         return {"hook_text": first_line, "style": "statement"}

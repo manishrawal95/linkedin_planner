@@ -11,37 +11,8 @@ import {
   FileText,
   X,
 } from "lucide-react";
-
-interface CalendarEntry {
-  id: number;
-  scheduled_date: string;
-  scheduled_time: string | null;
-  draft_id: number | null;
-  pillar_id: number | null;
-  series_id: number | null;
-  status: string;
-  notes: string | null;
-  post_id: number | null;
-}
-
-interface Pillar {
-  id: number;
-  name: string;
-  color: string;
-}
-
-interface Draft {
-  id: number;
-  topic: string;
-  content: string;
-  status: string;
-  pillar_id: number | null;
-}
-
-interface Series {
-  id: number;
-  name: string;
-}
+import type { CalendarEntry, Pillar, Draft, Series } from "@/types/linkedin";
+import { useToast } from "../components/Toast";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const STATUS_COLORS: Record<string, string> = {
@@ -51,14 +22,25 @@ const STATUS_COLORS: Record<string, string> = {
   skipped: "bg-red-100 border-red-200 text-red-400",
 };
 
+interface AISuggestion {
+  date?: string;
+  topic?: string;
+  title?: string;
+  pillar?: string;
+  notes?: string;
+  raw?: string;
+  [key: string]: unknown;
+}
+
 const CalendarPage = memo(function CalendarPage() {
+  const toast = useToast();
   const [entries, setEntries] = useState<CalendarEntry[]>([]);
   const [pillars, setPillars] = useState<Pillar[]>([]);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAdd, setShowAdd] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<unknown[] | null>(null);
+  const [suggestions, setSuggestions] = useState<AISuggestion[] | null>(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [markPostModal, setMarkPostModal] = useState<CalendarEntry | null>(null);
@@ -177,7 +159,7 @@ const CalendarPage = memo(function CalendarPage() {
       }),
     });
     if (!postRes.ok) {
-      alert("Failed to create post record. Please try again.");
+      toast.error("Failed to create post record — please try again.");
       return;
     }
     const postData = await postRes.json();
@@ -269,18 +251,55 @@ const CalendarPage = memo(function CalendarPage() {
       {/* Suggestions */}
       {suggestions && (
         <div className="bg-indigo-50 rounded-xl border border-indigo-200 p-4">
-          <h3 className="text-sm font-semibold text-indigo-900 mb-2">
-            AI Content Suggestions for Next Week
-          </h3>
-          <pre className="text-xs text-indigo-700 whitespace-pre-wrap">
-            {JSON.stringify(suggestions, null, 2)}
-          </pre>
-          <button
-            onClick={() => setSuggestions(null)}
-            className="mt-2 text-xs text-indigo-600 hover:underline"
-          >
-            Dismiss
-          </button>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-indigo-900">
+              AI Content Suggestions for Next Week
+            </h3>
+            <button
+              onClick={() => setSuggestions(null)}
+              className="p-1 hover:bg-indigo-100 rounded-lg transition-colors"
+              aria-label="Dismiss suggestions"
+            >
+              <X className="w-4 h-4 text-indigo-500" />
+            </button>
+          </div>
+          {suggestions.length === 0 ? (
+            <p className="text-sm text-indigo-600">No suggestions available.</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {suggestions.map((s, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-lg border border-indigo-200 p-3 space-y-1.5"
+                >
+                  {s.raw ? (
+                    <p className="text-xs text-indigo-800 whitespace-pre-wrap leading-relaxed">
+                      {s.raw}
+                    </p>
+                  ) : (
+                    <>
+                      {(s.date) && (
+                        <p className="text-xs font-semibold text-indigo-700">{s.date}</p>
+                      )}
+                      {(s.topic || s.title) && (
+                        <p className="text-sm font-medium text-gray-900 leading-snug">
+                          {s.topic ?? s.title}
+                        </p>
+                      )}
+                      {s.pillar && (
+                        <span className="inline-block text-xs font-medium px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">
+                          {s.pillar}
+                        </span>
+                      )}
+                      {s.notes && (
+                        <p className="text-xs text-gray-500 leading-relaxed">{s.notes}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -327,7 +346,7 @@ const CalendarPage = memo(function CalendarPage() {
               return (
                 <div
                   key={`empty-${idx}`}
-                  className="min-h-[100px] border-b border-r border-gray-100 bg-gray-50"
+                  className="min-h-[120px] border-b border-r border-gray-100 bg-gray-50"
                 />
               );
             }
@@ -341,7 +360,7 @@ const CalendarPage = memo(function CalendarPage() {
             return (
               <div
                 key={day}
-                className={`min-h-[100px] border-b border-r border-gray-100 p-1.5 ${isToday ? "bg-indigo-50/50" : ""}`}
+                className={`min-h-[120px] border-b border-r border-gray-100 p-1.5 ${isToday ? "bg-indigo-50/50" : ""}`}
               >
                 <div className="flex justify-between items-center mb-1">
                   <span
@@ -351,7 +370,7 @@ const CalendarPage = memo(function CalendarPage() {
                   </span>
                   <button
                     onClick={() => setShowAdd(dateStr)}
-                    className="p-0.5 rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600"
+                    className="p-1 min-w-[28px] min-h-[28px] flex items-center justify-center rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
@@ -368,7 +387,7 @@ const CalendarPage = memo(function CalendarPage() {
                   return (
                     <div
                       key={entry.id}
-                      className={`group text-[10px] px-1.5 py-1 rounded border mb-0.5 ${STATUS_COLORS[entry.status] || ""}`}
+                      className={`group text-xs px-1.5 py-1 rounded border mb-0.5 ${STATUS_COLORS[entry.status] || ""}`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="min-w-0 flex-1">
@@ -387,7 +406,7 @@ const CalendarPage = memo(function CalendarPage() {
                           )}
                           {linkedDraft && (
                             <div className="flex items-center gap-0.5 text-indigo-600">
-                              <FileText className="w-2.5 h-2.5" />
+                              <FileText className="w-3 h-3" />
                               <span className="truncate">{linkedDraft.topic}</span>
                             </div>
                           )}
@@ -395,7 +414,7 @@ const CalendarPage = memo(function CalendarPage() {
                             <p className="truncate">{entry.notes}</p>
                           )}
                         </div>
-                        <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100">
+                        <div className="flex gap-0.5 shrink-0 opacity-100 lg:opacity-0 lg:group-hover:opacity-100">
                           {entry.status !== "posted" && (
                             <button
                               onClick={() => {
@@ -410,17 +429,17 @@ const CalendarPage = memo(function CalendarPage() {
                                   });
                                 }
                               }}
-                              className="p-0.5 hover:bg-green-100 rounded"
+                              className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-green-100 rounded"
                               title="Mark as posted"
                             >
-                              <CheckCircle className="w-2.5 h-2.5 text-green-600" />
+                              <CheckCircle className="w-3.5 h-3.5 text-green-600" />
                             </button>
                           )}
                           <button
                             onClick={() => handleDeleteEntry(entry.id)}
-                            className="p-0.5 hover:bg-red-100 rounded"
+                            className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-red-100 rounded"
                           >
-                            <Trash2 className="w-2.5 h-2.5" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -428,7 +447,7 @@ const CalendarPage = memo(function CalendarPage() {
                       {entry.status === "planned" && (
                         <button
                           onClick={() => handleUpdateStatus(entry.id, "ready")}
-                          className="text-[9px] text-blue-600 hover:underline mt-0.5"
+                          className="text-xs text-blue-600 hover:underline mt-0.5"
                         >
                           Mark ready
                         </button>
@@ -452,14 +471,14 @@ const CalendarPage = memo(function CalendarPage() {
                           scheduled_time: e.target.value,
                         })
                       }
-                      className="w-full border rounded px-1 py-0.5 text-[10px]"
+                      className="w-full border rounded px-1 py-0.5 text-sm"
                     />
                     <select
                       value={addForm.pillar_id}
                       onChange={(e) =>
                         setAddForm({ ...addForm, pillar_id: e.target.value })
                       }
-                      className="w-full border rounded px-1 py-0.5 text-[10px]"
+                      className="w-full border rounded px-1 py-0.5 text-sm"
                     >
                       <option value="">Pillar</option>
                       {pillars.map((p) => (
@@ -474,7 +493,7 @@ const CalendarPage = memo(function CalendarPage() {
                         onChange={(e) =>
                           setAddForm({ ...addForm, draft_id: e.target.value })
                         }
-                        className="w-full border rounded px-1 py-0.5 text-[10px]"
+                        className="w-full border rounded px-1 py-0.5 text-sm"
                       >
                         <option value="">Link draft...</option>
                         {drafts.map((d) => (
@@ -490,7 +509,7 @@ const CalendarPage = memo(function CalendarPage() {
                         onChange={(e) =>
                           setAddForm({ ...addForm, series_id: e.target.value })
                         }
-                        className="w-full border rounded px-1 py-0.5 text-[10px]"
+                        className="w-full border rounded px-1 py-0.5 text-sm"
                       >
                         <option value="">Series...</option>
                         {seriesList.map((s) => (
@@ -506,20 +525,20 @@ const CalendarPage = memo(function CalendarPage() {
                       onChange={(e) =>
                         setAddForm({ ...addForm, notes: e.target.value })
                       }
-                      className="w-full border rounded px-1 py-0.5 text-[10px]"
+                      className="w-full border rounded px-1 py-0.5 text-sm"
                       placeholder="Notes..."
                     />
                     <div className="flex gap-1">
                       <button
                         type="submit"
-                        className="px-1.5 py-0.5 bg-indigo-600 text-white text-[10px] rounded"
+                        className="px-1.5 py-0.5 bg-indigo-600 text-white text-xs rounded"
                       >
                         Add
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowAdd(null)}
-                        className="px-1.5 py-0.5 text-gray-600 text-[10px] rounded border"
+                        className="px-1.5 py-0.5 text-gray-600 text-xs rounded border"
                       >
                         Cancel
                       </button>
@@ -537,7 +556,7 @@ const CalendarPage = memo(function CalendarPage() {
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 backdrop-blur-sm">
           <form
             onSubmit={handleMarkPosted}
-            className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl space-y-4"
+            className="bg-white rounded-xl p-6 w-full max-w-[calc(100vw-2rem)] sm:max-w-lg shadow-xl space-y-4 mx-4 sm:mx-0"
           >
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -590,7 +609,7 @@ const CalendarPage = memo(function CalendarPage() {
                   <option value="text">Text</option>
                   <option value="carousel">Carousel</option>
                   <option value="personal image">Personal Image</option>
-                  <option value="Social Proof Image">Social Proof Image</option>
+                  <option value="social proof image">Social Proof Image</option>
                   <option value="poll">Poll</option>
                   <option value="video">Video</option>
                   <option value="article">Article</option>

@@ -184,6 +184,20 @@ def _init_tables(conn: sqlite3.Connection) -> None:
             post_count INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now'))
         );
+
+        -- Performance indexes
+        CREATE INDEX IF NOT EXISTS idx_metrics_post_id ON metrics_snapshots(post_id);
+        CREATE INDEX IF NOT EXISTS idx_metrics_post_snapshot ON metrics_snapshots(post_id, snapshot_at);
+        CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author);
+        CREATE INDEX IF NOT EXISTS idx_posts_posted_at ON posts(posted_at);
+        CREATE INDEX IF NOT EXISTS idx_posts_pillar_id ON posts(pillar_id);
+        CREATE INDEX IF NOT EXISTS idx_posts_series_id ON posts(series_id);
+        CREATE INDEX IF NOT EXISTS idx_learnings_post_id ON learnings(post_id);
+        CREATE INDEX IF NOT EXISTS idx_learnings_category ON learnings(category);
+        CREATE INDEX IF NOT EXISTS idx_drafts_status ON drafts(status);
+        CREATE INDEX IF NOT EXISTS idx_calendar_scheduled_date ON content_calendar(scheduled_date);
+        CREATE INDEX IF NOT EXISTS idx_hooks_source_post_id ON hooks(source_post_id);
+        CREATE INDEX IF NOT EXISTS idx_hashtags_pillar_id ON hashtag_sets(pillar_id);
     """)
     conn.commit()
 
@@ -218,6 +232,18 @@ def _init_tables(conn: sqlite3.Connection) -> None:
     if "mood_board_item_id" not in draft_cols:
         conn.execute("ALTER TABLE drafts ADD COLUMN mood_board_item_id INTEGER REFERENCES mood_board_items(id)")
         logger.info("Added column mood_board_item_id to drafts")
+    conn.commit()
+
+    # Migrate: create linkedin_auth table if missing
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS linkedin_auth (
+            id INTEGER PRIMARY KEY,
+            access_token TEXT NOT NULL,
+            person_urn TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
     conn.commit()
 
     logger.info("All tables initialized")

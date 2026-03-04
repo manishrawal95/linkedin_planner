@@ -36,69 +36,7 @@ import {
   PolarRadiusAxis,
 } from "recharts";
 
-/* ── Types ────────────────────────────────────────────────────── */
-
-interface PillarPerformance {
-  id: number;
-  name: string;
-  color: string;
-  post_count: number;
-  avg_engagement: number;
-  avg_impressions: number;
-  avg_likes: number;
-  avg_comments: number;
-  total_impressions: number;
-}
-
-interface HookPerformance {
-  style: string;
-  count: number;
-  avg_engagement: number;
-  total_uses: number;
-}
-
-interface TypePerformance {
-  post_type: string;
-  count: number;
-  avg_engagement: number;
-  avg_impressions: number;
-}
-
-interface WordEngagement {
-  word_count: number;
-  engagement_score: number;
-  impressions: number;
-}
-
-interface MonthlyTrend {
-  month: string;
-  post_count: number;
-  avg_engagement: number;
-  total_impressions: number;
-  total_followers: number;
-}
-
-interface PostEntry {
-  id: number;
-  content: string;
-  post_type: string;
-  word_count: number;
-  posted_at: string;
-  engagement_score: number;
-  impressions: number;
-  likes: number;
-  comments: number;
-}
-
-interface AnalyticsData {
-  pillar_performance: PillarPerformance[];
-  hook_performance: HookPerformance[];
-  type_performance: TypePerformance[];
-  word_engagement: WordEngagement[];
-  monthly_trend: MonthlyTrend[];
-  top_posts: PostEntry[];
-  bottom_posts: PostEntry[];
-}
+import type { AnalyticsData, PostEntry } from "@/types/linkedin";
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
@@ -125,7 +63,7 @@ const TYPE_COLORS: Record<string, string> = {
   text: "#6366f1",
   carousel: "#f59e0b",
   "personal image": "#059669",
-  "Social Proof Image": "#0d9488",
+  "social proof image": "#0d9488",
   image: "#059669",
   poll: "#10b981",
   video: "#ef4444",
@@ -162,8 +100,8 @@ const AnalyticsPage = memo(function AnalyticsPage() {
       const res = await fetch("/api/linkedin/dashboard/analytics");
       const json = await res.json();
       setData(json);
-    } catch {
-      // backend may not be running
+    } catch (err) {
+      console.error("AnalyticsPage.fetchAnalytics: GET /api/linkedin/dashboard/analytics failed:", err);
     } finally {
       setLoading(false);
     }

@@ -2,24 +2,7 @@
 
 import { memo, useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, Layers, X, ToggleLeft, ToggleRight, FileText, Clock } from "lucide-react";
-
-interface Series {
-  id: number;
-  name: string;
-  description: string | null;
-  pillar_id: number | null;
-  frequency: string;
-  preferred_day: string | null;
-  preferred_time: string | null;
-  is_active: number;
-  created_at: string;
-}
-
-interface Pillar {
-  id: number;
-  name: string;
-  color: string;
-}
+import type { Series, Pillar } from "@/types/linkedin";
 
 const FREQUENCIES = ["daily", "weekly", "biweekly", "monthly"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -29,6 +12,7 @@ const SeriesPage = memo(function SeriesPage() {
   const [pillars, setPillars] = useState<Pillar[]>([]);
   const [seriesStats, setSeriesStats] = useState<Record<number, { post_count: number; last_posted: string | null }>>({});
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -39,30 +23,34 @@ const SeriesPage = memo(function SeriesPage() {
   });
 
   const fetchData = useCallback(async () => {
-    const [sRes, pRes] = await Promise.all([
-      fetch("/api/linkedin/series"),
-      fetch("/api/linkedin/pillars"),
-    ]);
-    const sData = await sRes.json();
-    const pData = await pRes.json();
-    const seriesList = sData.series || [];
-    setSeries(seriesList);
-    setPillars(pData.pillars || []);
+    try {
+      const [sRes, pRes] = await Promise.all([
+        fetch("/api/linkedin/series"),
+        fetch("/api/linkedin/pillars"),
+      ]);
+      const sData = await sRes.json();
+      const pData = await pRes.json();
+      const seriesList = sData.series || [];
+      setSeries(seriesList);
+      setPillars(pData.pillars || []);
 
-    // Fetch stats for each series
-    const stats: Record<number, { post_count: number; last_posted: string | null }> = {};
-    await Promise.all(
-      seriesList.map(async (s: Series) => {
-        try {
-          const res = await fetch(`/api/linkedin/series/${s.id}/stats`);
-          const data = await res.json();
-          stats[s.id] = { post_count: data.post_count || 0, last_posted: data.last_posted || null };
-        } catch {
-          stats[s.id] = { post_count: 0, last_posted: null };
-        }
-      })
-    );
-    setSeriesStats(stats);
+      // Fetch stats for each series
+      const stats: Record<number, { post_count: number; last_posted: string | null }> = {};
+      await Promise.all(
+        seriesList.map(async (s: Series) => {
+          try {
+            const res = await fetch(`/api/linkedin/series/${s.id}/stats`);
+            const data = await res.json();
+            stats[s.id] = { post_count: data.post_count || 0, last_posted: data.last_posted || null };
+          } catch {
+            stats[s.id] = { post_count: 0, last_posted: null };
+          }
+        })
+      );
+      setSeriesStats(stats);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -119,6 +107,14 @@ const SeriesPage = memo(function SeriesPage() {
 
   const inputClass =
     "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

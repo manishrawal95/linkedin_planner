@@ -1,24 +1,10 @@
 "use client";
 
 import { memo, useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, GripVertical, Palette, PenTool, Check, Pencil } from "lucide-react";
+import { Plus, Trash2, Palette, PenTool, Check, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
-
-interface Pillar {
-  id: number;
-  name: string;
-  color: string;
-  description: string | null;
-}
-
-interface MoodBoardItem {
-  id: number;
-  pillar_id: number;
-  type: string;
-  content: string;
-  source_url: string | null;
-  sort_order: number;
-}
+import { useToast } from "../components/Toast";
+import type { Pillar, MoodBoardItem } from "@/types/linkedin";
 
 const ITEM_TYPES = ["note", "idea", "quote", "link", "saved_post"];
 
@@ -32,10 +18,12 @@ const TYPE_STYLES: Record<string, string> = {
 
 const MoodBoardPage = memo(function MoodBoardPage() {
   const router = useRouter();
+  const toast = useToast();
   const [pillars, setPillars] = useState<Pillar[]>([]);
   const [items, setItems] = useState<MoodBoardItem[]>([]);
   const [draftedIds, setDraftedIds] = useState<Set<number>>(new Set());
   const [generatingDraftId, setGeneratingDraftId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showPillarForm, setShowPillarForm] = useState(false);
   const [addingToPillar, setAddingToPillar] = useState<number | null>(null);
   const [pillarForm, setPillarForm] = useState({
@@ -62,15 +50,19 @@ const MoodBoardPage = memo(function MoodBoardPage() {
   });
 
   const fetchData = useCallback(async () => {
-    const [pRes, mRes] = await Promise.all([
-      fetch("/api/linkedin/pillars"),
-      fetch("/api/linkedin/mood-board"),
-    ]);
-    const pData = await pRes.json();
-    const mData = await mRes.json();
-    setPillars(pData.pillars || []);
-    setItems(mData.items || []);
-    setDraftedIds(new Set(mData.drafted_item_ids || []));
+    try {
+      const [pRes, mRes] = await Promise.all([
+        fetch("/api/linkedin/pillars"),
+        fetch("/api/linkedin/mood-board"),
+      ]);
+      const pData = await pRes.json();
+      const mData = await mRes.json();
+      setPillars(pData.pillars || []);
+      setItems(mData.items || []);
+      setDraftedIds(new Set(mData.drafted_item_ids || []));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -131,7 +123,7 @@ const MoodBoardPage = memo(function MoodBoardPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(`Draft generation failed: ${err.detail || "Unknown error"}`);
+        toast.error(`Draft generation failed: ${err.detail || "Unknown error"}`);
         return;
       }
       const data = await res.json();
@@ -145,8 +137,9 @@ const MoodBoardPage = memo(function MoodBoardPage() {
       }
       setDraftedIds((prev) => new Set(prev).add(item.id));
       router.push("/linkedin/drafts");
-    } catch {
-      alert("Draft generation failed. Check that the backend is running.");
+    } catch (err) {
+      console.error("MoodBoardPage.handleCreateDraft: POST /api/linkedin/drafts/generate failed:", err);
+      toast.error("Draft generation failed. Check that the backend is running.");
     } finally {
       setGeneratingDraftId(null);
     }
@@ -198,6 +191,14 @@ const MoodBoardPage = memo(function MoodBoardPage() {
 
   const inputClass =
     "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -472,7 +473,6 @@ const MoodBoardPage = memo(function MoodBoardPage() {
                       ) : (
                         <div className="flex justify-between items-start">
                           <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                            <GripVertical className="w-3.5 h-3.5 text-gray-300 mt-0.5 shrink-0 cursor-grab" />
                             <div className="min-w-0">
                               <span className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded border ${TYPE_STYLES[item.type] || "bg-gray-50 text-gray-600"}`}>
                                 {item.type}
@@ -487,13 +487,14 @@ const MoodBoardPage = memo(function MoodBoardPage() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                          <div className="flex gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all">
                             <button
                               onClick={() => startEditItem(item)}
-                              className="p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700"
+                              className="p-1.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700"
                               title="Edit item"
+                              aria-label="Edit item"
                             >
-                              <Pencil className="w-3 h-3" />
+                              <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => !draftedIds.has(item.id) && generatingDraftId !== item.id && handleCreateDraft(item, pillar.name)}
@@ -508,9 +509,10 @@ const MoodBoardPage = memo(function MoodBoardPage() {
                             </button>
                             <button
                               onClick={() => handleDeleteItem(item.id)}
-                              className="p-0.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+                              className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+                              aria-label="Delete item"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>

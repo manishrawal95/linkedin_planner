@@ -14,11 +14,11 @@ import hashlib
 import json
 import logging
 import statistics
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend import prompts
 from backend.db import get_conn
-from backend.llm import generate, get_model_name
+from backend.llm import generate
 
 logger = logging.getLogger(__name__)
 
@@ -44,16 +44,17 @@ async def analyze_post(post_id: int) -> dict:
 
     new_learnings = await extract_learnings(dict(post), dict(latest_metrics), classification)
 
-    # Remove this post's previous learnings before re-inserting — prevents
-    # accumulation when a post is re-analyzed after new metrics are added
-    conn.execute("DELETE FROM learnings WHERE post_id = ?", (post_id,))
-    conn.commit()
+    # Only delete previous learnings AFTER new ones are successfully extracted
+    # to prevent data loss if the LLM call fails
+    if new_learnings:
+        conn.execute("DELETE FROM learnings WHERE post_id = ?", (post_id,))
+        conn.commit()
 
     saved = update_learnings(post_id, new_learnings)
 
     conn.execute(
         "UPDATE posts SET last_analyzed_at = ?, classification = ? WHERE id = ?",
-        (datetime.utcnow().isoformat(), classification, post_id),
+        (datetime.now(timezone.utc).isoformat(), classification, post_id),
     )
     conn.commit()
 
@@ -302,15 +303,14 @@ async def extract_learnings(post: dict, metrics: dict, classification: str) -> l
     result = await generate(prompt_text, system=prompts.SYSTEM_ANALYST)
 
     try:
-        text = result.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-        learnings = json.loads(text)
+        from backend.utils import parse_llm_json
+        learnings = parse_llm_json(result)
         if not isinstance(learnings, list):
             learnings = [learnings]
         return learnings
-    except (json.JSONDecodeError, IndexError):
-        logger.warning("Failed to parse LLM learnings response: %s", result[:200])
+    except (json.JSONDecodeError, IndexError, ValueError):
+        logger.warning("Failed to parse LLM learnings response: %s", result[:200],
+                        extra={"action": "Check LLM prompt format in prompts.EXTRACT_LEARNINGS."})
         return []
 
 
@@ -483,7 +483,7 @@ async def analyze_batch(post_ids: list[int], force: bool = False) -> dict:
         batch_learnings[pid] = unique
 
     # --- Save results ---
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     results = []
     for pm in posts_with_metrics:
         pid = pm["post"]["id"]
@@ -518,10 +518,8 @@ def _parse_batch_classifications(
     classifications: dict[int, str] = {}
 
     try:
-        text = raw.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-        parsed = json.loads(text)
+        from backend.utils import parse_llm_json
+        parsed = parse_llm_json(raw)
         for pid_str, val in parsed.items():
             pid = int(pid_str)
             # Handle {"classification": "hit", "reason": "..."} or bare string
@@ -559,10 +557,8 @@ def _parse_batch_learnings(raw: str, posts_with_metrics: list[dict], max_per_pos
     """Parse batch learnings JSON, capping to max_per_post per post."""
     result: dict[int, list[dict]] = {}
     try:
-        text = raw.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-        parsed = json.loads(text)
+        from backend.utils import parse_llm_json
+        parsed = parse_llm_json(raw)
         for pid_str, learnings in parsed.items():
             pid = int(pid_str)
             if isinstance(learnings, list):
@@ -627,7 +623,7 @@ def update_learnings(post_id: int, new_insights: list[dict]) -> int:
             new_confidence = min(0.95, matched["confidence"] + (1.0 - matched["confidence"]) * 0.2)
             conn.execute(
                 "UPDATE learnings SET times_confirmed = ?, confidence = ?, updated_at = ? WHERE id = ?",
-                (new_count, new_confidence, datetime.utcnow().isoformat(), matched["id"]),
+                (new_count, new_confidence, datetime.now(timezone.utc).isoformat(), matched["id"]),
             )
         else:
             conn.execute(

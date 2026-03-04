@@ -17,37 +17,7 @@ import {
   Send,
   Clock,
 } from "lucide-react";
-
-interface Post {
-  id: number;
-  author: string;
-  content: string;
-  post_url: string | null;
-  post_type: string;
-  hook_line: string | null;
-  hook_style: string | null;
-  cta_type: string;
-  word_count: number;
-  posted_at: string | null;
-  pillar_id: number | null;
-  topic_tags: string;
-  classification?: string | null;
-}
-
-interface ExpandedMetrics {
-  impressions: number;
-  members_reached: number;
-  profile_viewers: number;
-  followers_gained: number;
-  likes: number;
-  comments: number;
-  reposts: number;
-  saves: number;
-  sends: number;
-  engagement_score: number;
-  snapshot_type: string | null;
-  snapshot_at: string;
-}
+import type { Post, ExpandedMetrics } from "@/types/linkedin";
 
 interface PostCardProps {
   post: Post;
@@ -91,19 +61,10 @@ const PostCard = memo(function PostCard({
     }
   })();
 
-  const typeColors: Record<string, string> = {
-    text: "bg-gray-100 text-gray-600",
-    carousel: "bg-orange-100 text-orange-700",
-    "personal image": "bg-emerald-100 text-emerald-700",
-    "Social Proof Image": "bg-teal-100 text-teal-700",
-    image: "bg-emerald-100 text-emerald-700",
-    poll: "bg-cyan-100 text-cyan-700",
-    video: "bg-red-100 text-red-700",
-    article: "bg-blue-100 text-blue-700",
-  };
+  const badgeBase = "bg-gray-100 text-gray-600";
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
       {/* Top color bar */}
       {pillarColor && (
         <div className="h-1" style={{ backgroundColor: pillarColor }} />
@@ -114,50 +75,46 @@ const PostCard = memo(function PostCard({
           <div className="flex-1 min-w-0">
             {/* Header badges */}
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <span className={`text-xs font-medium px-2 py-1 rounded-md ${post.author === "me" ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-600"}`}>
-                {post.author === "me" ? "My post" : post.author}
-              </span>
-              <span className={`text-xs font-medium px-2 py-1 rounded-md ${typeColors[post.post_type] || "bg-gray-100 text-gray-600"}`}>
+              {/* Classification — color-coded (most important signal) */}
+              {post.classification === "hit" && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-green-100 text-green-700">
+                  Hit
+                </span>
+              )}
+              {post.classification === "miss" && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-red-100 text-red-700">
+                  Miss
+                </span>
+              )}
+              {post.classification === "average" && (
+                <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-500">
+                  Avg
+                </span>
+              )}
+              {/* Descriptive badges — uniform gray */}
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${badgeBase}`}>
                 {post.post_type}
               </span>
               {pillarName && (
                 <span
-                  className="text-xs font-medium px-2 py-1 rounded-md"
-                  style={{
-                    backgroundColor: `${pillarColor}15`,
-                    color: pillarColor,
-                  }}
+                  className="text-xs font-medium px-2 py-0.5 rounded-md"
+                  style={{ backgroundColor: `${pillarColor}18`, color: pillarColor }}
                 >
                   {pillarName}
                 </span>
               )}
               {post.hook_style && (
-                <span className="text-xs font-medium px-2 py-1 rounded-md bg-purple-100 text-purple-700">
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${badgeBase}`}>
                   {post.hook_style}
                 </span>
               )}
-              {post.cta_type !== "none" && (
-                <span className="text-xs font-medium px-2 py-1 rounded-md bg-amber-100 text-amber-700">
+              {post.cta_type && post.cta_type !== "none" && (
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${badgeBase}`}>
                   {post.cta_type}
                 </span>
               )}
-              {post.classification === "hit" && (
-                <span className="text-xs font-medium px-2 py-1 rounded-md bg-green-100 text-green-700">
-                  🔥 Hit
-                </span>
-              )}
-              {post.classification === "average" && (
-                <span className="text-xs font-medium px-2 py-1 rounded-md bg-amber-100 text-amber-700">
-                  Avg
-                </span>
-              )}
-              {post.classification === "miss" && (
-                <span className="text-xs font-medium px-2 py-1 rounded-md bg-red-100 text-red-700">
-                  Miss
-                </span>
-              )}
               {post.posted_at && (
-                <span className="text-xs text-gray-400 ml-auto">
+                <span className="text-[11px] text-gray-400 ml-auto">
                   {new Date(post.posted_at).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
@@ -239,6 +196,7 @@ const PostCard = memo(function PostCard({
               onClick={(e) => { e.stopPropagation(); onAddMetrics(post.id); }}
               className="p-2 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
               title="Update metrics"
+              aria-label="Update metrics"
             >
               <BarChart3 className="w-4 h-4" />
             </button>
@@ -246,6 +204,7 @@ const PostCard = memo(function PostCard({
               onClick={(e) => { e.stopPropagation(); onAnalyze(post.id); }}
               className="p-2 rounded-lg hover:bg-purple-50 text-gray-400 hover:text-purple-600 transition-colors"
               title="Analyze with AI"
+              aria-label="Analyze with AI"
             >
               <Sparkles className="w-4 h-4" />
             </button>
@@ -253,6 +212,7 @@ const PostCard = memo(function PostCard({
               onClick={(e) => { e.stopPropagation(); onEdit(post.id); }}
               className="p-2 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors"
               title="Edit post"
+              aria-label="Edit post"
             >
               <Pencil className="w-4 h-4" />
             </button>
@@ -264,6 +224,7 @@ const PostCard = memo(function PostCard({
                 onClick={(e) => e.stopPropagation()}
                 className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
                 title="Open on LinkedIn"
+                aria-label="Open on LinkedIn"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
@@ -272,6 +233,7 @@ const PostCard = memo(function PostCard({
               onClick={(e) => { e.stopPropagation(); onDelete(post.id); }}
               className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
               title="Delete"
+              aria-label="Delete post"
             >
               <Trash2 className="w-4 h-4" />
             </button>

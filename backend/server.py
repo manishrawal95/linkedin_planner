@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
-from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import config
@@ -22,12 +22,16 @@ from backend.models import (
     CompetitorUpdate,
     DraftCreate,
     DraftUpdate,
+    ExtractHookRequest,
     GoalCreate,
     GoalUpdate,
     HashtagSetCreate,
     HashtagSetUpdate,
     HookCreate,
     HookUpdate,
+    ImproveDraftRequest,
+    PostIdeasRequest,
+    PostToLinkedInRequest,
     MetricsCreate,
     MoodBoardItemCreate,
     MoodBoardItemUpdate,
@@ -78,6 +82,8 @@ def _rows_to_list(rows) -> list[dict]:
 
 @app.get("/health")
 async def health():
+    from fastapi.responses import JSONResponse
+
     checks = {"server": "ok", "provider": config.LLM_PROVIDER}
     try:
         get_conn()
@@ -85,7 +91,8 @@ async def health():
     except Exception as e:
         checks["database"] = f"error: {e}"
     all_ok = all(v == "ok" for k, v in checks.items() if k not in ("provider",))
-    return checks if all_ok else checks
+    status_code = 200 if all_ok else 503
+    return JSONResponse(content=checks, status_code=status_code)
 
 
 # ── Posts ────────────────────────────────────────────────────────
@@ -218,7 +225,7 @@ async def update_post(post_id: int, req: PostUpdate):
     if "content" in updates and updates["content"]:
         updates["word_count"] = len(updates["content"].split())
 
-    updates["updated_at"] = datetime.utcnow().isoformat()
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     if updates:
         set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -340,7 +347,7 @@ async def update_pillar(pillar_id: int, req: PillarUpdate):
         raise HTTPException(404, f"Pillar {pillar_id} not found")
 
     updates = req.model_dump(exclude_unset=True)
-    updates["updated_at"] = datetime.utcnow().isoformat()
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     set_clause = ", ".join(f"{k} = ?" for k in updates)
     conn.execute(f"UPDATE content_pillars SET {set_clause} WHERE id = ?", (*updates.values(), pillar_id))
     conn.commit()
@@ -620,7 +627,7 @@ async def update_draft(draft_id: int, req: DraftUpdate):
         raise HTTPException(404, f"Draft {draft_id} not found")
 
     updates = req.model_dump(exclude_unset=True)
-    updates["updated_at"] = datetime.utcnow().isoformat()
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     set_clause = ", ".join(f"{k} = ?" for k in updates)
     conn.execute(f"UPDATE drafts SET {set_clause} WHERE id = ?", (*updates.values(), draft_id))
     conn.commit()
@@ -641,34 +648,78 @@ async def mark_draft_posted(draft_id: int, post_id: int):
     conn = get_conn()
     conn.execute(
         "UPDATE drafts SET status = 'posted', posted_post_id = ?, updated_at = ? WHERE id = ?",
-        (post_id, datetime.utcnow().isoformat(), draft_id),
+        (post_id, datetime.now(timezone.utc).isoformat(), draft_id),
     )
     conn.commit()
     row = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
     return {"draft": _row_to_dict(row)}
 
 
+def _nyc_now() -> str:
+    """Current time in America/New_York as ISO string."""
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/New_York")).isoformat()
+
+
+async def _auto_fill_from_draft(content: str, conn=None) -> dict:
+    """Run LLM auto-fill on draft content including pillar detection. Returns defaults on failure."""
+    import json as _json
+    from backend import prompts as _prompts
+    from backend.llm import generate
+
+    # Build pillars context for the LLM
+    pillars_text = "None defined"
+    if conn is not None:
+        pillars = conn.execute("SELECT id, name FROM content_pillars ORDER BY sort_order").fetchall()
+        if pillars:
+            pillars_text = "\n".join(f"- id={p['id']}: {p['name']}" for p in pillars)
+
+    try:
+        from backend.utils import parse_llm_json
+        raw = await generate(_prompts.AUTO_FILL.format(content=content, pillars_text=pillars_text))
+        result = parse_llm_json(raw)
+        return {
+            "hook_line": result.get("hook_line", ""),
+            "hook_style": result.get("hook_style", ""),
+            "cta_type": result.get("cta_type", "none"),
+            "post_type": result.get("post_type", "text"),
+            "topic_tags": _json.dumps(result.get("topic_tags", [])),
+            "pillar_id": result.get("pillar_id"),
+        }
+    except Exception as e:
+        logger.warning("Auto-fill failed: %s — using defaults", e)
+        return {"hook_line": "", "hook_style": "", "cta_type": "none", "post_type": "text", "topic_tags": "[]", "pillar_id": None}
+
+
 @app.post("/drafts/{draft_id}/publish")
-async def publish_draft(draft_id: int, post_url: str | None = None, post_type: str = "text", posted_at: str | None = None):
-    """Create a post directly from a draft and mark the draft as posted."""
+async def publish_draft(draft_id: int, post_url: str | None = None, post_type: str | None = None, posted_at: str | None = None):
+    """Create a post from a draft with AI-auto-filled metadata. Marks draft as posted."""
     conn = get_conn()
     draft = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
     if not draft:
         raise HTTPException(404, f"Draft {draft_id} not found")
 
+    # Auto-fill all metadata from content — user doesn't need to fill manually
+    meta = await _auto_fill_from_draft(draft["content"], conn=conn)
+
+    now_iso = _nyc_now()
     word_count = len(draft["content"].split())
+    pillar_id = meta.get("pillar_id") or draft["pillar_id"]
     cur = conn.execute(
-        """INSERT INTO posts (author, content, post_url, post_type, topic_tags,
-           hook_line, cta_type, word_count, posted_at, pillar_id)
-           VALUES (?, ?, ?, ?, '[]', NULL, 'none', ?, ?, ?)""",
-        ("me", draft["content"], post_url, post_type, word_count,
-         posted_at or datetime.utcnow().isoformat(), draft["pillar_id"]),
+        """INSERT INTO posts (author, content, post_url, post_type, hook_line, hook_style,
+           cta_type, topic_tags, word_count, posted_at, pillar_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            "me", draft["content"], post_url,
+            post_type or meta["post_type"],
+            meta["hook_line"], meta["hook_style"], meta["cta_type"], meta["topic_tags"],
+            word_count, posted_at or now_iso, pillar_id,
+        ),
     )
     post_id = cur.lastrowid
-
     conn.execute(
         "UPDATE drafts SET status = 'posted', posted_post_id = ?, updated_at = ? WHERE id = ?",
-        (post_id, datetime.utcnow().isoformat(), draft_id),
+        (post_id, now_iso, draft_id),
     )
     conn.commit()
 
@@ -753,11 +804,9 @@ async def calendar_suggestions():
     result = await generate(prompt_text, system=_prompts.SYSTEM_DRAFTER)
 
     try:
-        text = result.strip()
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-        suggestions = json.loads(text)
-    except (json.JSONDecodeError, IndexError):
+        from backend.utils import parse_llm_json
+        suggestions = parse_llm_json(result)
+    except (json.JSONDecodeError, IndexError, ValueError):
         suggestions = [{"raw": result}]
 
     return {"suggestions": suggestions}
@@ -989,10 +1038,14 @@ async def dashboard_stats():
     total_drafts = conn.execute("SELECT COUNT(*) as c FROM drafts WHERE status = 'draft'").fetchone()["c"]
 
     avg_engagement = conn.execute("""
-        SELECT AVG(ms.engagement_score) as avg_score
-        FROM metrics_snapshots ms
-        JOIN posts p ON p.id = ms.post_id
-        WHERE p.author = 'me'
+        SELECT AVG(latest.engagement_score) as avg_score
+        FROM (
+            SELECT ms.engagement_score,
+                   ROW_NUMBER() OVER (PARTITION BY ms.post_id ORDER BY ms.snapshot_at DESC) as rn
+            FROM metrics_snapshots ms
+            JOIN posts p ON p.id = ms.post_id
+            WHERE p.author = 'me'
+        ) latest WHERE latest.rn = 1
     """).fetchone()["avg_score"]
 
     recent_posts = conn.execute("""
@@ -1013,18 +1066,63 @@ async def dashboard_stats():
     """).fetchall()
 
     total_impressions = conn.execute("""
-        SELECT SUM(ms.impressions) as total
-        FROM metrics_snapshots ms
-        JOIN posts p ON p.id = ms.post_id
-        WHERE p.author = 'me'
+        SELECT SUM(latest.impressions) as total
+        FROM (
+            SELECT ms.impressions,
+                   ROW_NUMBER() OVER (PARTITION BY ms.post_id ORDER BY ms.snapshot_at DESC) as rn
+            FROM metrics_snapshots ms
+            JOIN posts p ON p.id = ms.post_id
+            WHERE p.author = 'me'
+        ) latest WHERE latest.rn = 1
     """).fetchone()["total"]
 
     avg_likes = conn.execute("""
-        SELECT AVG(ms.likes) as avg_likes
-        FROM metrics_snapshots ms
-        JOIN posts p ON p.id = ms.post_id
-        WHERE p.author = 'me'
+        SELECT AVG(latest.likes) as avg_likes
+        FROM (
+            SELECT ms.likes,
+                   ROW_NUMBER() OVER (PARTITION BY ms.post_id ORDER BY ms.snapshot_at DESC) as rn
+            FROM metrics_snapshots ms
+            JOIN posts p ON p.id = ms.post_id
+            WHERE p.author = 'me'
+        ) latest WHERE latest.rn = 1
     """).fetchone()["avg_likes"]
+
+    # Trend: this month vs last month (posts count)
+    posts_this_month = conn.execute("""
+        SELECT COUNT(*) as c FROM posts WHERE author='me'
+        AND strftime('%Y-%m', posted_at) = strftime('%Y-%m', 'now')
+    """).fetchone()["c"]
+    posts_last_month = conn.execute("""
+        SELECT COUNT(*) as c FROM posts WHERE author='me'
+        AND strftime('%Y-%m', posted_at) = strftime('%Y-%m', date('now', '-1 month'))
+    """).fetchone()["c"]
+
+    imp_this_month = conn.execute("""
+        SELECT SUM(latest.impressions) as total
+        FROM (
+            SELECT ms.impressions,
+                   ROW_NUMBER() OVER (PARTITION BY ms.post_id ORDER BY ms.snapshot_at DESC) as rn
+            FROM metrics_snapshots ms
+            JOIN posts p ON p.id = ms.post_id
+            WHERE p.author = 'me' AND strftime('%Y-%m', p.posted_at) = strftime('%Y-%m', 'now')
+        ) latest WHERE latest.rn = 1
+    """).fetchone()["total"] or 0
+
+    imp_last_month = conn.execute("""
+        SELECT SUM(latest.impressions) as total
+        FROM (
+            SELECT ms.impressions,
+                   ROW_NUMBER() OVER (PARTITION BY ms.post_id ORDER BY ms.snapshot_at DESC) as rn
+            FROM metrics_snapshots ms
+            JOIN posts p ON p.id = ms.post_id
+            WHERE p.author = 'me' AND strftime('%Y-%m', p.posted_at) = strftime('%Y-%m', date('now', '-1 month'))
+        ) latest WHERE latest.rn = 1
+    """).fetchone()["total"] or 0
+
+    def _trend_pct(current, previous):
+        if not previous:
+            return None
+        return round(((current - previous) / previous) * 100, 1)
 
     return {
         "total_posts": total_posts,
@@ -1033,6 +1131,10 @@ async def dashboard_stats():
         "total_impressions": total_impressions or 0,
         "avg_likes": avg_likes or 0,
         "recent_posts": _rows_to_list(recent_posts),
+        "posts_this_month": posts_this_month,
+        "posts_last_month": posts_last_month,
+        "posts_trend_pct": _trend_pct(posts_this_month, posts_last_month),
+        "impressions_trend_pct": _trend_pct(imp_this_month, imp_last_month),
     }
 
 
@@ -1239,6 +1341,581 @@ async def regenerate_playbook():
     from backend.analyzer import check_and_regenerate_playbook
     updated = check_and_regenerate_playbook(force=True)
     return {"regenerated": updated}
+
+
+# ── Dashboard: Queue Status ───────────────────────────────────────
+
+@app.get("/dashboard/queue-status")
+async def dashboard_queue_status():
+    conn = get_conn()
+    queue_depth = conn.execute(
+        "SELECT COUNT(*) as c FROM drafts WHERE status IN ('draft', 'revised')"
+    ).fetchone()["c"]
+
+    ready_drafts_rows = conn.execute("""
+        SELECT d.id, d.topic, d.status,
+               cc.scheduled_date
+        FROM drafts d
+        LEFT JOIN content_calendar cc ON cc.draft_id = d.id AND cc.status IN ('planned', 'ready')
+        WHERE d.status IN ('draft', 'revised')
+        ORDER BY cc.scheduled_date ASC NULLS LAST, d.updated_at DESC
+        LIMIT 3
+    """).fetchall()
+    ready_drafts = [
+        {
+            "id": r["id"],
+            "topic": r["topic"],
+            "status": r["status"],
+            "scheduled_date": r["scheduled_date"],
+        }
+        for r in ready_drafts_rows
+    ]
+
+    last_post_row = conn.execute("""
+        SELECT CAST(julianday('now') - julianday(MAX(posted_at)) AS INTEGER) as days
+        FROM posts
+        WHERE author = 'me' AND posted_at IS NOT NULL AND posted_at != ''
+    """).fetchone()
+    days_since_last_post = last_post_row["days"] if last_post_row and last_post_row["days"] is not None else None
+
+    next_sched_row = conn.execute("""
+        SELECT MIN(scheduled_date) as next_date
+        FROM content_calendar
+        WHERE status IN ('planned', 'ready') AND scheduled_date >= date('now')
+    """).fetchone()
+    next_scheduled = next_sched_row["next_date"] if next_sched_row else None
+
+    return {
+        "queue_depth": queue_depth,
+        "target_depth": 5,
+        "ready_drafts": ready_drafts,
+        "days_since_last_post": days_since_last_post,
+        "next_scheduled": next_scheduled,
+    }
+
+
+# ── Dashboard: Actions ────────────────────────────────────────────
+
+@app.get("/dashboard/actions")
+async def dashboard_actions():
+    conn = get_conn()
+
+    posts_rows = conn.execute("""
+        SELECT id, content, posted_at,
+               CAST((julianday('now') - julianday(posted_at)) * 24 AS INTEGER) as elapsed_hours
+        FROM posts
+        WHERE author = 'me' AND posted_at IS NOT NULL AND posted_at != ''
+          AND posted_at >= datetime('now', '-9 days')
+        ORDER BY posted_at DESC
+    """).fetchall()
+
+    metrics_due = []
+    for post in posts_rows:
+        pid = post["id"]
+        elapsed = post["elapsed_hours"] or 0
+        snapshots = conn.execute(
+            "SELECT CAST((julianday('now') - julianday(snapshot_at)) * 24 AS INTEGER) as age_hours FROM metrics_snapshots WHERE post_id = ? ORDER BY snapshot_at",
+            (pid,),
+        ).fetchall()
+        snap_ages = [s["age_hours"] for s in snapshots]
+
+        label = None
+        if elapsed >= 20 and not any(10 <= a <= 30 for a in snap_ages):
+            label = "24h metrics"
+        elif elapsed >= 44 and not any(36 <= a <= 60 for a in snap_ages):
+            label = "48h metrics"
+        elif elapsed >= 6 * 24 and not any(5 * 24 <= a <= 9 * 24 for a in snap_ages):
+            label = "1-week metrics"
+
+        if label:
+            metrics_due.append({
+                "post_id": pid,
+                "content_preview": post["content"][:80],
+                "posted_at": post["posted_at"],
+                "due_label": label,
+            })
+
+    unanalyzed_rows = conn.execute("""
+        SELECT p.id, p.content
+        FROM posts p
+        WHERE p.last_analyzed_at IS NULL
+          AND p.id IN (SELECT DISTINCT post_id FROM metrics_snapshots)
+          AND p.author = 'me'
+        ORDER BY p.posted_at DESC
+        LIMIT 5
+    """).fetchall()
+    unanalyzed = [
+        {"id": r["id"], "content_preview": r["content"][:80]}
+        for r in unanalyzed_rows
+    ]
+
+    return {"metrics_due": metrics_due, "unanalyzed_posts": unanalyzed}
+
+
+# ── Dashboard: Post Ideas ─────────────────────────────────────────
+
+@app.post("/dashboard/post-ideas")
+async def dashboard_post_ideas(body: PostIdeasRequest = Body(default=PostIdeasRequest())):
+    from backend import prompts as _prompts
+    from backend.llm import generate
+    topic_hint: str = body.topic_hint.strip()
+
+    conn = get_conn()
+    playbook_row = conn.execute(
+        "SELECT content FROM playbook ORDER BY generated_at DESC LIMIT 1"
+    ).fetchone()
+    playbook = (playbook_row["content"][:500] if playbook_row else "No playbook yet.")
+
+    top_learnings_rows = conn.execute("""
+        SELECT insight, category FROM learnings
+        WHERE confidence >= 0.6
+        ORDER BY (times_confirmed * confidence) DESC
+        LIMIT 3
+    """).fetchall()
+    top_learnings = "\n".join(f"- [{r['category']}] {r['insight']}" for r in top_learnings_rows) or "No learnings yet."
+
+    pillar_counts = conn.execute("""
+        SELECT cp.name, COUNT(p.id) as cnt
+        FROM content_pillars cp
+        LEFT JOIN posts p ON p.pillar_id = cp.id AND p.author = 'me'
+            AND p.posted_at >= date('now', '-30 days')
+        GROUP BY cp.id
+        ORDER BY cnt ASC
+        LIMIT 1
+    """).fetchone()
+    gap_pillar = pillar_counts["name"] if pillar_counts else "none"
+
+    best_hook_row = conn.execute("""
+        SELECT p.hook_style, COUNT(*) as cnt
+        FROM posts p
+        JOIN (
+            SELECT post_id, ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY snapshot_at DESC) as rn
+            FROM metrics_snapshots
+        ) ms ON ms.post_id = p.id AND ms.rn = 1
+        WHERE p.author = 'me' AND p.classification = 'hit' AND p.hook_style IS NOT NULL AND p.hook_style != ''
+        GROUP BY p.hook_style
+        ORDER BY cnt DESC
+        LIMIT 1
+    """).fetchone()
+    best_hook = best_hook_row["hook_style"] if best_hook_row else "story"
+
+    recent_topics = conn.execute("""
+        SELECT topic_tags FROM posts
+        WHERE author = 'me' AND posted_at >= date('now', '-14 days')
+        ORDER BY posted_at DESC LIMIT 5
+    """).fetchall()
+    recent_list = []
+    for r in recent_topics:
+        try:
+            tags = json.loads(r["topic_tags"] or "[]")
+            recent_list.extend(tags[:2])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    recent_topics_str = ", ".join(recent_list[:8]) or "none"
+
+    if topic_hint:
+        # User has a specific idea — generate angles directly ON that topic only
+        prompt_text = _prompts.POST_IDEAS_ON_TOPIC.format(topic_hint=topic_hint)
+    else:
+        prompt_text = _prompts.POST_IDEAS.format(
+            playbook=playbook,
+            top_learnings=top_learnings,
+            gap_pillar=gap_pillar,
+            best_hook=best_hook,
+            recent_topics=recent_topics_str,
+        )
+    result = await generate(prompt_text)
+
+    try:
+        from backend.utils import parse_llm_json
+        ideas = parse_llm_json(result)
+        if not isinstance(ideas, list):
+            ideas = []
+    except (json.JSONDecodeError, IndexError, ValueError):
+        logger.warning("Failed to parse post ideas: %s", result[:200],
+                        extra={"action": "Check LLM prompt format in prompts.POST_IDEAS."})
+        ideas = []
+
+    return {"ideas": ideas}
+
+
+# ── Drafts: Improve ───────────────────────────────────────────────
+
+IMPROVE_ACTIONS = {
+    "punch-hook": "Rewrite ONLY the first sentence: make it bold, specific, and arresting. Keep everything else identical.",
+    "shorten": "Cut ~30%. Keep hook and CTA. Remove the weakest sentences.",
+    "make-specific": "Replace vague statements with concrete numbers, timeframes, or real examples.",
+    "conversational": "First person, shorter sentences, no jargon. Sound human.",
+    "apply-playbook": "Apply these rules strictly:\n{playbook_rules}",
+}
+
+
+@app.post("/drafts/{draft_id}/improve")
+async def improve_draft(draft_id: int, body: ImproveDraftRequest = Body(...)):
+    from backend import prompts as _prompts
+    from backend.llm import generate
+
+    conn = get_conn()
+    draft = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+    if not draft:
+        raise HTTPException(404, f"Draft {draft_id} not found")
+
+    action = body.action
+    if action not in IMPROVE_ACTIONS:
+        raise HTTPException(400, f"Unknown action '{action}'. Valid: {list(IMPROVE_ACTIONS.keys())}")
+
+    playbook_context = ""
+    if action == "apply-playbook":
+        playbook_row = conn.execute(
+            "SELECT content FROM playbook ORDER BY generated_at DESC LIMIT 1"
+        ).fetchone()
+        rules = playbook_row["content"][:800] if playbook_row else "No playbook yet."
+        action_instruction = IMPROVE_ACTIONS["apply-playbook"].format(playbook_rules=rules)
+        playbook_context = f"PLAYBOOK:\n{rules}"
+    else:
+        action_instruction = IMPROVE_ACTIONS[action]
+
+    prompt_text = _prompts.IMPROVE_DRAFT.format(
+        action_instruction=action_instruction,
+        content=draft["content"],
+        playbook_context=playbook_context,
+    )
+    improved = await generate(prompt_text)
+    return {"improved_content": improved.strip()}
+
+
+# ── Hooks: Extract from content ───────────────────────────────────
+
+@app.post("/hooks/extract")
+async def extract_hook_from_content(body: ExtractHookRequest = Body(...)):
+    from backend.drafter import extract_hook_from_post
+
+    result = await extract_hook_from_post(body.content)
+    return result
+
+
+# ── Posts: Auto-fill metadata from content ────────────────────────
+
+@app.post("/posts/auto-fill")
+async def auto_fill_post_metadata(body: dict = Body(...)):
+    import json as _json
+    from backend import prompts as _prompts
+
+    content = body.get("content", "")
+    if not content.strip():
+        raise HTTPException(400, "content is required")
+
+    # Build pillars context for the LLM
+    conn = get_conn()
+    pillars = conn.execute("SELECT id, name FROM content_pillars ORDER BY sort_order").fetchall()
+    pillars_text = "\n".join(f"- id={p['id']}: {p['name']}" for p in pillars) if pillars else "None defined"
+
+    prompt_text = _prompts.AUTO_FILL.format(content=content, pillars_text=pillars_text)
+    raw = await generate(prompt_text)
+
+    try:
+        from backend.utils import parse_llm_json
+        result = parse_llm_json(raw)
+    except Exception:
+        logger.error("Failed to parse auto-fill LLM response: %s", raw[:300],
+                      extra={"action": "Check LLM response format; may need prompt adjustment."})
+        raise HTTPException(500, "Failed to extract metadata from content. Please try again.")
+
+    return {
+        "hook_line": result.get("hook_line", ""),
+        "hook_style": result.get("hook_style", ""),
+        "cta_type": result.get("cta_type", "none"),
+        "post_type": result.get("post_type", "text"),
+        "topic_tags": result.get("topic_tags", []),
+        "pillar_id": result.get("pillar_id"),
+    }
+
+
+# ── LinkedIn OAuth ────────────────────────────────────────────────
+
+@app.get("/auth/linkedin/status")
+async def linkedin_auth_status():
+    from backend.db import get_conn as _gc
+    conn = _gc()
+    row = conn.execute(
+        "SELECT person_urn, expires_at FROM linkedin_auth ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+    if not row:
+        return {"authenticated": False}
+    from datetime import datetime as _dt
+    try:
+        exp = _dt.fromisoformat(row["expires_at"])
+        if exp < _dt.utcnow():
+            return {"authenticated": False, "reason": "token_expired"}
+    except (ValueError, TypeError):
+        pass
+    return {"authenticated": True, "expires_at": row["expires_at"], "person_urn": row["person_urn"]}
+
+
+@app.get("/auth/linkedin/start")
+async def linkedin_auth_start():
+    import secrets
+    from fastapi.responses import RedirectResponse
+
+    if not config.LINKEDIN_CLIENT_ID:
+        raise HTTPException(400, "LINKEDIN_CLIENT_ID not configured. Add it to backend/.env")
+
+    state = secrets.token_urlsafe(32)
+    # Store state in DB for validation in callback
+    conn = get_conn()
+    conn.execute("CREATE TABLE IF NOT EXISTS oauth_state (state TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')))")
+    # Clean up states older than 10 minutes
+    conn.execute("DELETE FROM oauth_state WHERE created_at < datetime('now', '-10 minutes')")
+    conn.execute("INSERT INTO oauth_state (state) VALUES (?)", (state,))
+    conn.commit()
+
+    redirect_uri = f"http://{config.HOST}:{config.PORT}/auth/linkedin/callback"
+    auth_url = (
+        "https://www.linkedin.com/oauth/v2/authorization"
+        f"?response_type=code"
+        f"&client_id={config.LINKEDIN_CLIENT_ID}"
+        f"&redirect_uri={redirect_uri}"
+        f"&scope=openid%20profile%20w_member_social"
+        f"&state={state}"
+    )
+    return RedirectResponse(url=auth_url)
+
+
+@app.get("/auth/linkedin/callback")
+async def linkedin_auth_callback(code: str | None = None, error: str | None = None, state: str | None = None):
+    import httpx
+    from fastapi.responses import RedirectResponse
+    from datetime import datetime as _dt, timedelta
+
+    if error or not code:
+        return RedirectResponse(url=f"http://localhost:3000/linkedin?auth=error&reason={error or 'no_code'}")
+
+    if not config.LINKEDIN_CLIENT_ID or not config.LINKEDIN_CLIENT_SECRET:
+        return RedirectResponse(url="http://localhost:3000/linkedin?auth=error&reason=not_configured")
+
+    # Validate OAuth state to prevent CSRF
+    if not state:
+        return RedirectResponse(url="http://localhost:3000/linkedin?auth=error&reason=missing_state")
+    conn_state = get_conn()
+    conn_state.execute("CREATE TABLE IF NOT EXISTS oauth_state (state TEXT PRIMARY KEY, created_at TEXT DEFAULT (datetime('now')))")
+    valid = conn_state.execute("DELETE FROM oauth_state WHERE state = ?", (state,)).rowcount
+    conn_state.commit()
+    if not valid:
+        logger.warning("OAuth callback with invalid state parameter",
+                        extra={"action": "Possible CSRF attempt or expired state. User should retry auth."})
+        return RedirectResponse(url="http://localhost:3000/linkedin?auth=error&reason=invalid_state")
+
+    redirect_uri = f"http://{config.HOST}:{config.PORT}/auth/linkedin/callback"
+    async with httpx.AsyncClient() as client:
+        token_res = await client.post(
+            "https://www.linkedin.com/oauth/v2/accessToken",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "client_id": config.LINKEDIN_CLIENT_ID,
+                "client_secret": config.LINKEDIN_CLIENT_SECRET,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        if token_res.status_code != 200:
+            logger.error(
+                "LinkedIn token exchange failed: status=%d body=%s",
+                token_res.status_code, token_res.text[:500],
+                extra={"action": "Check client_id/secret in backend/.env and ensure redirect_uri matches app settings."},
+            )
+            return RedirectResponse(url="http://localhost:3000/linkedin?auth=error&reason=token_exchange_failed")
+
+        token_data = token_res.json()
+        access_token = token_data.get("access_token")
+        expires_in = token_data.get("expires_in", 5184000)
+
+        me_res = await client.get(
+            "https://api.linkedin.com/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if me_res.status_code != 200:
+            logger.error(
+                "LinkedIn userinfo fetch failed: status=%d body=%s",
+                me_res.status_code, me_res.text[:300],
+                extra={"action": "Ensure 'Sign In with LinkedIn using OpenID Connect' product is enabled on your app."},
+            )
+            return RedirectResponse(url="http://localhost:3000/linkedin?auth=error&reason=profile_fetch_failed")
+
+        me_data = me_res.json()
+        person_urn = f"urn:li:person:{me_data.get('sub')}"
+        expires_at = (_dt.now(tz=timezone.utc) + timedelta(seconds=expires_in)).isoformat()
+
+    conn = get_conn()
+    conn.execute("DELETE FROM linkedin_auth")
+    conn.execute(
+        "INSERT INTO linkedin_auth (access_token, person_urn, expires_at) VALUES (?, ?, ?)",
+        (access_token, person_urn, expires_at),
+    )
+    conn.commit()
+    logger.info("LinkedIn auth stored for %s, expires %s", person_urn, expires_at)
+    return RedirectResponse(url="http://localhost:3000/linkedin?auth=success")
+
+
+# ── Drafts: Post to LinkedIn ──────────────────────────────────────
+
+@app.post("/drafts/{draft_id}/post-to-linkedin")
+async def post_draft_to_linkedin(draft_id: int, body: PostToLinkedInRequest = Body(default=PostToLinkedInRequest())):
+    """Publish a draft directly to LinkedIn. Optionally include image_urn from /upload-image."""
+    import httpx
+
+    conn = get_conn()
+    draft = conn.execute("SELECT * FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+    if not draft:
+        raise HTTPException(404, f"Draft {draft_id} not found")
+
+    auth_row = conn.execute(
+        "SELECT access_token, person_urn, expires_at FROM linkedin_auth ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+    if not auth_row:
+        raise HTTPException(401, "Not connected to LinkedIn. Visit /auth/linkedin/start to connect.")
+
+    # Check token expiry before making API calls
+    try:
+        from datetime import datetime as _dt
+        if auth_row["expires_at"] and _dt.fromisoformat(auth_row["expires_at"]) < _dt.now(tz=timezone.utc):
+            raise HTTPException(401, "LinkedIn token expired. Re-authenticate at /auth/linkedin/start")
+    except (ValueError, TypeError):
+        pass
+
+    access_token = auth_row["access_token"]
+    person_urn = auth_row["person_urn"]
+    image_urn: str | None = body.image_urn
+
+    post_body: dict = {
+        "author": person_urn,
+        "commentary": draft["content"],
+        "visibility": "PUBLIC",
+        "distribution": {
+            "feedDistribution": "MAIN_FEED",
+            "targetEntities": [],
+            "thirdPartyDistributionChannels": [],
+        },
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": False,
+    }
+    if image_urn:
+        post_body["content"] = {"media": {"id": image_urn}}
+
+    async with httpx.AsyncClient() as client:
+        res = await client.post(
+            "https://api.linkedin.com/rest/posts",
+            json=post_body,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "X-Restli-Protocol-Version": "2.0.0",
+                "LinkedIn-Version": "202602",
+                "Content-Type": "application/json",
+            },
+            timeout=30,
+        )
+        if res.status_code != 201:
+            logger.error(
+                "LinkedIn post failed: status=%d body=%s",
+                res.status_code, res.text[:500],
+            )
+            raise HTTPException(502, "Failed to publish to LinkedIn. Check your connection and try again.")
+
+        post_urn = res.headers.get("x-restli-id", "")
+
+    post_url = f"https://www.linkedin.com/feed/update/{post_urn}/" if post_urn else ""
+
+    # Auto-fill metadata from draft content
+    meta = await _auto_fill_from_draft(draft["content"], conn=conn)
+
+    now_iso = _nyc_now()
+    word_count = len(draft["content"].split())
+    pillar_id = meta.get("pillar_id") or draft["pillar_id"]
+    # If an image was attached, the LLM can't infer it from text — override post_type
+    effective_post_type = "social proof image" if image_urn else meta["post_type"]
+    cur = conn.execute(
+        """INSERT INTO posts (author, content, post_url, post_type, hook_line, hook_style,
+           cta_type, topic_tags, word_count, posted_at, pillar_id)
+           VALUES ('me', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            draft["content"], post_url,
+            effective_post_type, meta["hook_line"], meta["hook_style"],
+            meta["cta_type"], meta["topic_tags"],
+            word_count, now_iso, pillar_id,
+        ),
+    )
+    post_id = cur.lastrowid
+
+    conn.execute(
+        "UPDATE drafts SET status = 'posted', posted_post_id = ?, updated_at = ? WHERE id = ?",
+        (post_id, now_iso, draft_id),
+    )
+    conn.commit()
+    logger.info("Draft %d posted to LinkedIn as post %d (urn: %s)", draft_id, post_id, post_urn)
+
+    return {"post_id": post_id, "post_urn": post_urn, "post_url": post_url, "message": "Posted to LinkedIn"}
+
+
+@app.post("/drafts/{draft_id}/upload-image")
+async def upload_draft_image(draft_id: int, file: UploadFile = File(...)):
+    """Upload an image to LinkedIn and return its URN for use in post-to-linkedin."""
+    import httpx
+
+    conn = get_conn()
+    auth_row = conn.execute(
+        "SELECT access_token, person_urn FROM linkedin_auth ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+    if not auth_row:
+        raise HTTPException(401, "Not connected to LinkedIn. Visit /auth/linkedin/start to connect.")
+
+    access_token = auth_row["access_token"]
+    person_urn = auth_row["person_urn"]
+
+    # Validate file type and size
+    ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+    MAX_SIZE_MB = 10
+    content_type = file.content_type or "image/jpeg"
+    if content_type not in ALLOWED_TYPES:
+        raise HTTPException(400, f"Invalid file type '{content_type}'. Allowed: {', '.join(ALLOWED_TYPES)}")
+
+    image_data = await file.read()
+    if len(image_data) > MAX_SIZE_MB * 1024 * 1024:
+        raise HTTPException(400, f"File too large. Maximum size is {MAX_SIZE_MB}MB.")
+
+    async with httpx.AsyncClient() as client:
+        # Step 1: Initialize upload
+        init_res = await client.post(
+            "https://api.linkedin.com/rest/images?action=initializeUpload",
+            json={"initializeUploadRequest": {"owner": person_urn}},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "X-Restli-Protocol-Version": "2.0.0",
+                "LinkedIn-Version": "202602",
+                "Content-Type": "application/json",
+            },
+            timeout=15,
+        )
+        if init_res.status_code != 200:
+            logger.error("LinkedIn image init failed: status=%d body=%s", init_res.status_code, init_res.text[:300],
+                         extra={"action": "Check LinkedIn API access and token validity."})
+            raise HTTPException(502, "Failed to initialize image upload with LinkedIn.")
+
+        init_data = init_res.json()
+        upload_url = init_data["value"]["uploadUrl"]
+        image_urn = init_data["value"]["image"]
+
+        # Step 2: PUT binary to upload URL
+        put_res = await client.put(
+            upload_url,
+            content=image_data,
+            headers={"Content-Type": content_type},
+            timeout=60,
+        )
+        if put_res.status_code not in (200, 201):
+            raise HTTPException(502, f"LinkedIn image upload failed ({put_res.status_code})")
+
+    logger.info("Draft %d image uploaded to LinkedIn as %s", draft_id, image_urn)
+    return {"image_urn": image_urn}
 
 
 # ── Entrypoint ───────────────────────────────────────────────────

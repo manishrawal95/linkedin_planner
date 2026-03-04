@@ -90,6 +90,7 @@ const MetricsForm = memo(function MetricsForm({
           type="button"
           onClick={onCancel}
           className="p-1.5 hover:bg-gray-100 rounded-lg"
+          aria-label="Close metrics form"
         >
           <X className="w-5 h-5 text-gray-400" />
         </button>

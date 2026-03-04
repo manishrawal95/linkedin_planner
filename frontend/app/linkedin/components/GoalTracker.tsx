@@ -2,15 +2,7 @@
 
 import { memo, useEffect, useState, useCallback } from "react";
 import { Plus, X, Check, Trash2 } from "lucide-react";
-
-interface Goal {
-  id: number;
-  metric: string;
-  target_value: number;
-  current_value: number;
-  deadline: string | null;
-  status: string;
-}
+import type { Goal } from "@/types/linkedin";
 
 const GoalTracker = memo(function GoalTracker() {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -27,8 +19,8 @@ const GoalTracker = memo(function GoalTracker() {
       const res = await fetch("/api/linkedin/goals");
       const data = await res.json();
       setGoals(data.goals || []);
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error("GoalTracker.fetchGoals: GET /api/linkedin/goals failed:", err);
     }
   }, []);
 
@@ -89,16 +81,18 @@ const GoalTracker = memo(function GoalTracker() {
                 {!isAchieved && (
                   <button
                     onClick={() => handleMarkAchieved(goal.id)}
-                    className="p-1 hover:bg-green-100 rounded text-gray-400 hover:text-green-600"
+                    className="p-1.5 hover:bg-green-100 rounded text-gray-400 hover:text-green-600"
                     title="Mark achieved"
+                    aria-label={`Mark ${goal.metric} as achieved`}
                   >
                     <Check className="w-3.5 h-3.5" />
                   </button>
                 )}
                 <button
                   onClick={() => handleDelete(goal.id)}
-                  className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
+                  className="p-1.5 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
                   title="Delete"
+                  aria-label={`Delete ${goal.metric} goal`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

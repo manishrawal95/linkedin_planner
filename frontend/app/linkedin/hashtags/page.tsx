@@ -2,22 +2,7 @@
 
 import { memo, useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, Hash, Copy, Check, Filter, TrendingUp, RotateCw } from "lucide-react";
-
-interface Pillar {
-  id: number;
-  name: string;
-  color: string;
-}
-
-interface HashtagSet {
-  id: number;
-  name: string;
-  hashtags: string; // JSON string from API
-  pillar_id: number | null;
-  avg_reach: number | null;
-  times_used: number;
-  created_at: string;
-}
+import type { Pillar, HashtagSet } from "@/types/linkedin";
 
 function parseHashtags(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw;
@@ -38,6 +23,7 @@ const HashtagSetsPage = memo(function HashtagSetsPage() {
   const [showForm, setShowForm] = useState(false);
   const [filterPillar, setFilterPillar] = useState("");
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: "",
     hashtags: "",
@@ -52,9 +38,13 @@ const HashtagSetsPage = memo(function HashtagSetsPage() {
 
   const fetchHashtagSets = useCallback(async () => {
     const params = filterPillar ? `?pillar_id=${filterPillar}` : "";
-    const res = await fetch(`/api/linkedin/hashtags${params}`);
-    const data = await res.json();
-    setHashtagSets(data.hashtag_sets || []);
+    try {
+      const res = await fetch(`/api/linkedin/hashtags${params}`);
+      const data = await res.json();
+      setHashtagSets(data.hashtag_sets || []);
+    } finally {
+      setLoading(false);
+    }
   }, [filterPillar]);
 
   useEffect(() => {
@@ -129,6 +119,14 @@ const HashtagSetsPage = memo(function HashtagSetsPage() {
 
   const inputClass =
     "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

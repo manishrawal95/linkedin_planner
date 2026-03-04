@@ -2,14 +2,7 @@
 
 import { memo, useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, Anchor, Copy, Check } from "lucide-react";
-
-interface Hook {
-  id: number;
-  text: string;
-  style: string;
-  times_used: number;
-  avg_engagement_score: number | null;
-}
+import type { Hook } from "@/types/linkedin";
 
 const HOOK_STYLES = [
   "Question",
@@ -27,12 +20,17 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
   const [filterStyle, setFilterStyle] = useState("");
   const [form, setForm] = useState({ text: "", style: "statement" });
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchHooks = useCallback(async () => {
     const params = filterStyle ? `?style=${filterStyle}` : "";
-    const res = await fetch(`/api/linkedin/hooks${params}`);
-    const data = await res.json();
-    setHooks(data.hooks || []);
+    try {
+      const res = await fetch(`/api/linkedin/hooks${params}`);
+      const data = await res.json();
+      setHooks(data.hooks || []);
+    } finally {
+      setLoading(false);
+    }
   }, [filterStyle]);
 
   useEffect(() => {
@@ -77,6 +75,14 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
 
   const inputClass =
     "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

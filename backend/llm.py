@@ -4,30 +4,67 @@ LLM provider abstraction — Gemini (default) or Claude.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 
 from backend import config
 
 logger = logging.getLogger(__name__)
 
+# Module-level client singletons (created on first use)
+_gemini_client = None
+_claude_client = None
+
 
 async def generate(prompt: str, system: str = "") -> str:
     """Generate text using the configured LLM provider."""
     provider = config.LLM_PROVIDER.lower()
-    if provider == "gemini":
-        return await _generate_gemini(prompt, system)
-    elif provider == "claude":
-        return await _generate_claude(prompt, system)
-    else:
-        raise ValueError(f"Unknown LLM provider: {provider}. Use 'gemini' or 'claude'.")
+    start = time.monotonic()
+    try:
+        if provider == "gemini":
+            result = await _generate_gemini(prompt, system)
+        elif provider == "claude":
+            result = await _generate_claude(prompt, system)
+        else:
+            raise ValueError(f"Unknown LLM provider: {provider}. Use 'gemini' or 'claude'.")
+        elapsed = time.monotonic() - start
+        logger.info("LLM call completed: provider=%s model=%s duration=%.1fs chars=%d",
+                     provider, get_model_name(), elapsed, len(result))
+        return result
+    except Exception:
+        elapsed = time.monotonic() - start
+        logger.error("LLM call failed: provider=%s model=%s duration=%.1fs",
+                      provider, get_model_name(), elapsed,
+                      extra={"action": f"Check {provider} API key and quota."})
+        raise
+
+
+def _get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None:
+        from google import genai
+        if not config.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is not set. Add it to backend/.env")
+        _gemini_client = genai.Client(api_key=config.GEMINI_API_KEY)
+    return _gemini_client
+
+
+def _get_claude_client():
+    global _claude_client
+    if _claude_client is None:
+        import anthropic
+        if not config.ANTHROPIC_API_KEY:
+            raise ValueError("ANTHROPIC_API_KEY is not set. Add it to backend/.env")
+        _claude_client = anthropic.AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+    return _claude_client
 
 
 async def _generate_gemini(prompt: str, system: str) -> str:
-    import asyncio
     from google import genai
     from google.genai import errors as genai_errors
 
-    client = genai.Client(api_key=config.GEMINI_API_KEY)
+    client = _get_gemini_client()
     full_prompt = f"{system}\n\n{prompt}" if system else prompt
 
     max_retries = 5
@@ -44,7 +81,8 @@ async def _generate_gemini(prompt: str, system: str) -> str:
         except genai_errors.ClientError as e:
             if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
                 wait = min(60, (attempt + 1) * 15)
-                logger.warning("Gemini rate limited, retrying in %ds (attempt %d/%d)", wait, attempt + 1, max_retries)
+                logger.warning("Gemini rate limited, retrying in %ds (attempt %d/%d)", wait, attempt + 1, max_retries,
+                               extra={"action": "Wait for rate limit to reset or check Gemini quota."})
                 await asyncio.sleep(wait)
             else:
                 raise
@@ -54,19 +92,41 @@ async def _generate_gemini(prompt: str, system: str) -> str:
 async def _generate_claude(prompt: str, system: str) -> str:
     import anthropic
 
-    client = anthropic.AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+    client = _get_claude_client()
 
-    kwargs = {
-        "model": config.CLAUDE_MODEL,
-        "max_tokens": 4096,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": config.LLM_TEMPERATURE,
-    }
-    if system:
-        kwargs["system"] = system
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            kwargs = {
+                "model": config.CLAUDE_MODEL,
+                "max_tokens": 4096,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": config.LLM_TEMPERATURE,
+            }
+            if system:
+                kwargs["system"] = system
 
-    response = await client.messages.create(**kwargs)
-    return response.content[0].text
+            response = await client.messages.create(**kwargs)
+            if not response.content:
+                logger.warning("Claude returned empty content",
+                               extra={"action": "Check if content was filtered by safety settings."})
+                return ""
+            return response.content[0].text
+        except anthropic.RateLimitError:
+            wait = min(60, (attempt + 1) * 15)
+            logger.warning("Claude rate limited, retrying in %ds (attempt %d/%d)", wait, attempt + 1, max_retries,
+                           extra={"action": "Wait for rate limit to reset or check Anthropic quota."})
+            await asyncio.sleep(wait)
+        except anthropic.APIStatusError as e:
+            if e.status_code >= 500:
+                wait = min(30, (attempt + 1) * 5)
+                logger.warning("Claude server error %d, retrying in %ds (attempt %d/%d)",
+                               e.status_code, wait, attempt + 1, max_retries,
+                               extra={"action": "Anthropic API may be experiencing issues."})
+                await asyncio.sleep(wait)
+            else:
+                raise
+    raise RuntimeError("Claude rate limit exceeded after retries. Try again in a few minutes.")
 
 
 def get_model_name() -> str:

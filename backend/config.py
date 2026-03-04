@@ -35,6 +35,10 @@ SQLITE_DB_PATH: str = os.getenv(
     "LINKEDIN_SQLITE_PATH", str(PROJECT_DIR / "linkedin_data.db")
 )
 
+# ── LinkedIn OAuth ───────────────────────────────────────────────
+LINKEDIN_CLIENT_ID: str = os.getenv("LINKEDIN_CLIENT_ID", "")
+LINKEDIN_CLIENT_SECRET: str = os.getenv("LINKEDIN_CLIENT_SECRET", "")
+
 # ── Server ───────────────────────────────────────────────────────
 HOST: str = os.getenv("LINKEDIN_HOST", "127.0.0.1")
 PORT: int = int(os.getenv("LINKEDIN_PORT", "8200"))

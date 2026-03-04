@@ -7,43 +7,7 @@ import PostForm from "../components/PostForm";
 import PostCard from "../components/PostCard";
 import MetricsForm from "../components/MetricsForm";
 import { useToast } from "../components/Toast";
-
-interface Post {
-  id: number;
-  author: string;
-  content: string;
-  post_url: string | null;
-  post_type: string;
-  hook_line: string | null;
-  hook_style: string | null;
-  cta_type: string;
-  word_count: number;
-  posted_at: string | null;
-  pillar_id: number | null;
-  topic_tags: string;
-  classification?: string | null;
-}
-
-interface Pillar {
-  id: number;
-  name: string;
-  color: string;
-}
-
-interface Metrics {
-  impressions: number;
-  members_reached: number;
-  profile_viewers: number;
-  followers_gained: number;
-  likes: number;
-  comments: number;
-  reposts: number;
-  saves: number;
-  sends: number;
-  engagement_score: number;
-  snapshot_type: string | null;
-  snapshot_at: string;
-}
+import type { Post, Pillar, Metrics } from "@/types/linkedin";
 
 const PostsPage = memo(function PostsPage() {
   const toast = useToast();
@@ -86,7 +50,8 @@ const PostsPage = memo(function PostsPage() {
           metrics[Number(postId)] = m as Metrics;
         }
         setMetricsMap(metrics);
-      } catch {
+      } catch (err) {
+        console.error("PostsPage.fetchPosts: batch-metrics fetch failed:", err);
         setMetricsMap({});
       }
     }
@@ -168,7 +133,8 @@ const PostsPage = memo(function PostsPage() {
       const cls = data.classification ? ` · ${data.classification}` : "";
       toast.success(`Analysis complete${cls} — ${data.learnings_extracted} learnings extracted.`);
       fetchPosts();
-    } catch {
+    } catch (err) {
+      console.error("PostsPage.handleAnalyze: POST /api/linkedin/analyze/:id failed:", err);
       toast.error("Analysis failed. Make sure the post has metrics.");
     } finally {
       setAnalyzing(null);
@@ -202,7 +168,8 @@ const PostsPage = memo(function PostsPage() {
       const summary = `${results.length} analyzed · ${hits} hits · ${avg} avg · ${misses} misses · ${totalLearnings} learnings${alreadyAnalyzed ? ` · ${alreadyAnalyzed} skipped` : ""}${noMetrics ? ` · ${noMetrics} no metrics` : ""}`;
       toast.success(`Batch analysis complete — ${summary}`);
       fetchPosts();
-    } catch {
+    } catch (err) {
+      console.error("PostsPage.handleBatchAnalyze: POST /api/linkedin/analyze/batch failed:", err);
       toast.error("Batch analysis failed. Make sure your posts have metrics.");
     } finally {
       setBatchAnalyzing(false);
@@ -214,12 +181,13 @@ const PostsPage = memo(function PostsPage() {
     try {
       const res = await fetch(`/api/linkedin/posts/${postId}`, { method: "DELETE" });
       if (!res.ok) {
-        alert("Failed to delete post. Please try again.");
+        toast.error("Failed to delete post. Please try again.");
         return;
       }
       fetchPosts();
-    } catch {
-      alert("Failed to delete post. Please try again.");
+    } catch (err) {
+      console.error("PostsPage.handleDelete: DELETE /api/linkedin/posts/:id failed:", err);
+      toast.error("Failed to delete post. Please try again.");
     }
   };
 
@@ -259,6 +227,11 @@ const PostsPage = memo(function PostsPage() {
         const comB = metricsMap[b.id]?.comments || 0;
         return comB - comA;
       }
+      if (sortBy === "saves") {
+        const savA = metricsMap[a.id]?.saves || 0;
+        const savB = metricsMap[b.id]?.saves || 0;
+        return savB - savA;
+      }
       return 0;
     });
 
@@ -291,7 +264,7 @@ const PostsPage = memo(function PostsPage() {
       </div>
 
       {/* Search & Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 px-4 py-3 space-y-3">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 space-y-3">
         <div className="relative">
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -299,15 +272,15 @@ const PostsPage = memo(function PostsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search posts by content, tags, or hook..."
-            className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+            className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
           />
         </div>
         <div className="flex gap-3 items-center flex-wrap">
-          <Filter className="w-4 h-4 text-gray-400" />
+          <Filter className="w-4 h-4 text-gray-400 shrink-0" />
           <select
             value={filterAuthor}
             onChange={(e) => setFilterAuthor(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-gray-50 focus:bg-white transition-colors"
+            className="flex-1 sm:flex-none w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
           >
             <option value="">All authors</option>
             <option value="me">My posts</option>
@@ -316,7 +289,7 @@ const PostsPage = memo(function PostsPage() {
           <select
             value={filterPillar}
             onChange={(e) => setFilterPillar(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-gray-50 focus:bg-white transition-colors"
+            className="flex-1 sm:flex-none w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
           >
             <option value="">All pillars</option>
             {pillars.map((p) => (
@@ -328,13 +301,13 @@ const PostsPage = memo(function PostsPage() {
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-gray-50 focus:bg-white transition-colors"
+            className="flex-1 sm:flex-none w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
           >
             <option value="">All types</option>
             <option value="text">Text</option>
             <option value="carousel">Carousel</option>
             <option value="personal image">Personal Image</option>
-            <option value="Social Proof Image">Social Proof Image</option>
+            <option value="social proof image">Social Proof Image</option>
             <option value="poll">Poll</option>
             <option value="video">Video</option>
             <option value="article">Article</option>
@@ -342,24 +315,25 @@ const PostsPage = memo(function PostsPage() {
           <select
             value={filterClassification}
             onChange={(e) => setFilterClassification(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-gray-50 focus:bg-white transition-colors"
+            className="flex-1 sm:flex-none w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
           >
             <option value="">All results</option>
             <option value="hit">Hit</option>
             <option value="average">Average</option>
             <option value="miss">Miss</option>
           </select>
-          <div className="ml-auto flex items-center gap-2">
-            <ArrowUpDown className="w-4 h-4 text-gray-400" />
+          <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
+            <ArrowUpDown className="w-4 h-4 text-gray-400 shrink-0" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-gray-50 focus:bg-white transition-colors"
+              className="flex-1 sm:flex-none border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
             >
               <option value="date">Sort by Date</option>
               <option value="engagement">Sort by Engagement</option>
               <option value="impressions">Sort by Impressions</option>
               <option value="comments">Sort by Comments</option>
+              <option value="saves">Sort by Saves</option>
             </select>
           </div>
         </div>
@@ -408,19 +382,27 @@ const PostsPage = memo(function PostsPage() {
       {/* Post List */}
       <div className="space-y-4">
         {filteredPosts.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-600">No posts yet</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Add your first post to start tracking performance
+          <div className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-7 h-7 text-blue-400" />
+            </div>
+            <p className="text-base font-semibold text-gray-800">
+              {searchQuery || filterType || filterClassification ? "No matching posts" : "No posts yet"}
             </p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Post
-            </button>
+            <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">
+              {searchQuery || filterType || filterClassification
+                ? "Try adjusting your filters or search query"
+                : "Log your LinkedIn posts to start tracking performance and getting AI insights"}
+            </p>
+            {!searchQuery && !filterType && !filterClassification && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Add Post
+              </button>
+            )}
           </div>
         ) : (
           filteredPosts.map((post) => (

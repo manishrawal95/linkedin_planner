@@ -199,6 +199,53 @@ Respond in JSON format:
 {{"hook_text": "...", "style": "..."}}"""
 
 
+POST_IDEAS = """Suggest 5 specific LinkedIn post ideas for this creator.
+
+WHAT WORKS (playbook):
+{playbook}
+
+TOP LEARNINGS:
+{top_learnings}
+
+FILL THE GAPS:
+- Underused pillar: {gap_pillar}
+- Best hook style: {best_hook} (use for 2-3 ideas)
+- Recent topics to avoid: {recent_topics}
+
+Rules: Each idea must be a specific angle (not generic). Vary hook styles.
+
+Respond ONLY in JSON:
+[{{"topic": "specific angle from their experience", "hook_style": "question|contrarian|story|stat|cliffhanger|list|statement", "pillar": "pillar name or null"}}]"""
+
+
+POST_IDEAS_ON_TOPIC = """A LinkedIn creator has a rough idea. Generate 5 specific post angles that are directly about this idea.
+
+ROUGH IDEA: "{topic_hint}"
+
+Your job: Interpret the rough idea and generate 5 concrete, specific angles a person could write a LinkedIn post about. The angles must be clearly related to the rough idea — do not use it as loose inspiration and drift elsewhere.
+
+Rules:
+1. Read the rough idea literally. If it mentions a person, relationship, or event — write angles about THAT.
+2. Each angle is a specific story, lesson, or observation — not a vague theme.
+3. Use a different hook style for each of the 5 angles: question, contrarian, story, stat, cliffhanger, list, or statement.
+4. Write angles as first-person post topics (e.g. "The lesson my mom taught me that changed how I run my business")
+
+Respond ONLY in JSON:
+[{{"topic": "specific angle directly about the rough idea", "hook_style": "question|contrarian|story|stat|cliffhanger|list|statement", "pillar": null}}]"""
+
+
+IMPROVE_DRAFT = """Improve this LinkedIn post. Apply ONLY the requested action.
+
+ACTION: {action_instruction}
+
+ORIGINAL:
+{content}
+
+{playbook_context}
+
+Return ONLY the improved post text. No preamble, no explanation."""
+
+
 CALENDAR_SUGGESTIONS = """Based on the author's content pillars, posting patterns, and series schedule,
 suggest a content plan for the next week.
 
@@ -233,3 +280,29 @@ Respond in JSON format:
     "hook_style": "question"
   }}
 ]"""
+
+AUTO_FILL = """Extract structured metadata from this LinkedIn post.
+
+POST:
+{content}
+
+CONTENT PILLARS (pick the best matching id, or null if none fit):
+{pillars_text}
+
+Return ONLY valid JSON with these exact fields:
+{{
+  "hook_line": "the first sentence or opening line of the post",
+  "hook_style": one of: "Question" | "Contrarian" | "Story" | "Stat" | "Cliffhanger" | "List" | "Statement",
+  "cta_type": one of: "none" | "question" | "link" | "engagement-bait" | "advice",
+  "post_type": one of: "text" | "carousel" | "personal image" | "Social Proof Image" | "poll" | "video" | "article",
+  "topic_tags": ["tag1", "tag2"],
+  "pillar_id": null
+}}
+
+Rules:
+- hook_line: copy the literal first sentence verbatim
+- hook_style: identify the rhetorical technique used to open
+- cta_type: identify the call-to-action intent at the end (none if absent)
+- post_type: infer from content (default "text" if uncertain)
+- topic_tags: 2-4 specific topic tags, lowercase, no #
+- pillar_id: integer id from the CONTENT PILLARS list above that best matches the post topic; null if no pillars are defined or none fit"""

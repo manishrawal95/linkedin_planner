@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useRef,
   memo,
   type ReactNode,
 } from "react";
@@ -34,17 +35,16 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
-let nextId = 0;
-
 export const ToastProvider = memo(function ToastProvider({
   children,
 }: {
   children: ReactNode;
 }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const nextIdRef = useRef(0);
 
   const addToast = useCallback((message: string, type: ToastType) => {
-    const id = nextId++;
+    const id = nextIdRef.current++;
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -85,8 +85,8 @@ export const ToastProvider = memo(function ToastProvider({
           return (
             <div
               key={toast.id}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg animate-in slide-in-from-right ${s.bg}`}
-              style={{ animation: "slideIn 0.3s ease-out" }}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg ${s.bg}`}
+              style={{ animation: "slideInRight 0.3s ease-out" }}
             >
               {s.icon}
               <p className="text-sm font-medium flex-1">{toast.message}</p>
@@ -100,12 +100,6 @@ export const ToastProvider = memo(function ToastProvider({
           );
         })}
       </div>
-      <style jsx global>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-      `}</style>
     </ToastContext.Provider>
   );
 });

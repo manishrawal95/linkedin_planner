@@ -1,13 +1,8 @@
 "use client";
 
 import { memo, useState } from "react";
-import { X, FileText } from "lucide-react";
-
-interface Pillar {
-  id: number;
-  name: string;
-  color: string;
-}
+import { X, FileText, Zap } from "lucide-react";
+import type { Pillar } from "@/types/linkedin";
 
 interface PostFormProps {
   pillars: Pillar[];
@@ -16,7 +11,7 @@ interface PostFormProps {
   initial?: Record<string, unknown>;
 }
 
-const POST_TYPES = ["text", "carousel", "personal image", "Social Proof Image", "poll", "video", "article"];
+const POST_TYPES = ["text", "carousel", "personal image", "social proof image", "poll", "video", "article"];
 const CTA_TYPES = ["none", "question", "link", "engagement-bait", "advice"];
 const HOOK_STYLES = ["", "Question", "Contrarian", "Story", "Stat", "Cliffhanger", "List", "Statement"];
 
@@ -41,11 +36,13 @@ const PostForm = memo(function PostForm({
     cta_type: (initial?.cta_type as string) || "none",
     hook_line: (initial?.hook_line as string) || "",
     hook_style: (initial?.hook_style as string) || "",
-    posted_at: (initial?.posted_at as string) || "",
+    posted_at: ((initial?.posted_at as string) || "").slice(0, 16),
     pillar_id: (initial?.pillar_id as number) || "",
     topic_tags: (initial?.topic_tags as string) || "",
   });
   const [saving, setSaving] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [autoFilling, setAutoFilling] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,8 +60,61 @@ const PostForm = memo(function PostForm({
     }
   };
 
+  const handleAutoFill = async () => {
+    if (!form.content.trim()) return;
+    setAutoFilling(true);
+    try {
+      const res = await fetch("/api/linkedin/posts/auto-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: form.content }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setForm((prev) => ({
+          ...prev,
+          hook_line: data.hook_line || prev.hook_line,
+          hook_style: data.hook_style || prev.hook_style,
+          cta_type: data.cta_type || prev.cta_type,
+          post_type: data.post_type || prev.post_type,
+          topic_tags: Array.isArray(data.topic_tags)
+            ? data.topic_tags.join(", ")
+            : prev.topic_tags,
+        }));
+      }
+    } catch (err) {
+      console.error("PostForm.handleAutoFill: POST /api/linkedin/posts/auto-fill failed:", err);
+    } finally {
+      setAutoFilling(false);
+    }
+  };
+
+  const handleExtractHook = async () => {
+    if (!form.content.trim()) return;
+    setExtracting(true);
+    try {
+      const res = await fetch("/api/linkedin/hooks/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: form.content }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setForm((prev) => ({
+          ...prev,
+          hook_line: data.hook_text || prev.hook_line,
+          hook_style: data.style || prev.hook_style,
+        }));
+      }
+    } catch (err) {
+      console.error("PostForm.handleExtractHook: POST /api/linkedin/hooks/extract failed:", err);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const inputClass =
-    "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
+    "w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors";
 
   return (
     <form
@@ -80,12 +130,13 @@ const PostForm = memo(function PostForm({
           type="button"
           onClick={onCancel}
           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          aria-label="Close form"
         >
           <X className="w-5 h-5 text-gray-400" />
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Author
@@ -151,15 +202,37 @@ const PostForm = memo(function PostForm({
           placeholder="Paste the LinkedIn post content here..."
           required
         />
-        <p className="text-xs text-gray-400 mt-1">
-          {form.content.split(/\s+/).filter(Boolean).length} words
-        </p>
+        <div className="flex items-center justify-between mt-1.5">
+          <p className="text-[11px] text-gray-400">
+            {form.content.split(/\s+/).filter(Boolean).length} words
+          </p>
+          <button
+            type="button"
+            onClick={handleAutoFill}
+            disabled={autoFilling || !form.content.trim()}
+            className="flex items-center gap-1.5 text-xs text-indigo-600 font-medium hover:text-indigo-800 disabled:opacity-40 transition-colors"
+          >
+            <Zap className="w-3 h-3" />
+            {autoFilling ? "Filling..." : "Auto-fill fields"}
+          </button>
+        </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Hook Line
-        </label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-sm font-medium text-gray-700">
+            Hook Line
+          </label>
+          <button
+            type="button"
+            onClick={handleExtractHook}
+            disabled={extracting || !form.content.trim()}
+            className="flex items-center gap-1 text-xs text-amber-700 font-medium hover:text-amber-900 disabled:opacity-40 transition-colors"
+          >
+            <Zap className="w-3 h-3" />
+            {extracting ? "Extracting..." : "Extract"}
+          </button>
+        </div>
         <input
           type="text"
           value={form.hook_line}
@@ -169,7 +242,7 @@ const PostForm = memo(function PostForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Hook Style
@@ -205,7 +278,7 @@ const PostForm = memo(function PostForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Pillar

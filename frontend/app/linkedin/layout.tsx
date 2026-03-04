@@ -10,9 +10,9 @@ export default function LinkedInLayout({
 }) {
   return (
     <ToastProvider>
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-dvh bg-gray-50">
         <LinkedInNav />
-        <main className="flex-1 p-8 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 pt-14 lg:pt-4 lg:p-8 overflow-auto">{children}</main>
       </div>
     </ToastProvider>
   );
