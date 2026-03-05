@@ -1,7 +1,10 @@
 "use client";
 
 import { memo, useEffect, useState, useCallback } from "react";
-import { Plus, X, Check, Trash2 } from "lucide-react";
+import { Plus, Check, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import type { Goal } from "@/types/linkedin";
 
 const GoalTracker = memo(function GoalTracker() {
@@ -68,44 +71,46 @@ const GoalTracker = memo(function GoalTracker() {
         return (
           <div
             key={goal.id}
-            className={`p-3 rounded-lg border ${isAchieved ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-100"}`}
+            className={`p-3 rounded-xl border ${isAchieved ? "bg-emerald-50/50 border-emerald-200/60" : "bg-stone-50 border-stone-200/60"}`}
           >
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-900 capitalize">
+              <span className="text-sm font-medium text-stone-900 capitalize">
                 {goal.metric}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-stone-500">
                   {goal.current_value} / {goal.target_value}
                 </span>
                 {!isAchieved && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleMarkAchieved(goal.id)}
-                    className="p-1.5 hover:bg-green-100 rounded text-gray-400 hover:text-green-600"
+                    className="h-7 w-7 rounded-lg text-stone-400 hover:text-emerald-600 hover:bg-emerald-50"
                     title="Mark achieved"
                     aria-label={`Mark ${goal.metric} as achieved`}
                   >
                     <Check className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => handleDelete(goal.id)}
-                  className="p-1.5 hover:bg-red-50 rounded text-gray-400 hover:text-red-600"
+                  className="h-7 w-7 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50"
                   title="Delete"
                   aria-label={`Delete ${goal.metric} goal`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full transition-all ${isAchieved ? "bg-green-500" : "bg-indigo-600"}`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            <Progress
+              value={progress}
+              className={`h-2 ${isAchieved ? "bg-emerald-100" : "bg-stone-200"}`}
+            />
             {goal.deadline && (
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-stone-400 mt-1">
                 Deadline: {new Date(goal.deadline).toLocaleDateString()}
               </p>
             )}
@@ -116,27 +121,27 @@ const GoalTracker = memo(function GoalTracker() {
       {showForm ? (
         <form
           onSubmit={handleAdd}
-          className="p-3 rounded-lg border border-indigo-200 bg-indigo-50 space-y-3"
+          className="p-3 rounded-xl border border-stone-200/60 bg-stone-50 space-y-3"
         >
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-stone-600 mb-1">
                 Metric
               </label>
-              <input
+              <Input
                 type="text"
                 value={form.metric}
                 onChange={(e) => setForm({ ...form, metric: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                className="rounded-xl border-stone-200 h-8 text-sm"
                 placeholder="e.g. impressions"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
+              <label className="block text-xs font-medium text-stone-600 mb-1">
                 Target
               </label>
-              <input
+              <Input
                 type="number"
                 value={form.target_value}
                 onChange={(e) =>
@@ -145,31 +150,30 @@ const GoalTracker = memo(function GoalTracker() {
                     target_value: parseFloat(e.target.value) || 0,
                   })
                 }
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                className="rounded-xl border-stone-200 h-8 text-sm"
                 required
               />
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              type="submit"
-              className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700"
-            >
+            <Button type="submit" size="sm" className="rounded-xl text-xs h-7">
               Add Goal
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setShowForm(false)}
-              className="px-3 py-1.5 text-gray-600 text-xs font-medium rounded-lg border border-gray-300 hover:bg-white"
+              className="rounded-xl text-xs h-7 border-stone-200"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+          className="flex items-center gap-1.5 text-sm text-stone-600 hover:text-stone-900 font-medium transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Goal

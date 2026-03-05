@@ -1,14 +1,27 @@
 "use client";
 
 import { memo, useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Users, ExternalLink, X, Edit2 } from "lucide-react";
+import { Plus, Trash2, Users, ExternalLink, Edit2 } from "lucide-react";
 import type { Competitor } from "@/types/linkedin";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const CompetitorsPage = memo(function CompetitorsPage() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
   const [form, setForm] = useState({
     name: "",
     linkedin_url: "",
@@ -71,160 +84,198 @@ const CompetitorsPage = memo(function CompetitorsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this competitor?")) return;
     await fetch(`/api/linkedin/competitors/${id}`, { method: "DELETE" });
+    setDeleteTarget(null);
     fetchCompetitors();
   };
-
-  const inputClass =
-    "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-600" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-indigo-600" />
-            Competitor Analysis
+          <h1 className="text-2xl font-semibold text-stone-900 tracking-tight">
+            Competitors
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-stone-500 mt-1">
             {competitors.length} competitor{competitors.length !== 1 ? "s" : ""} tracked
           </p>
         </div>
-        <button
+        <Button
           onClick={() => {
             setShowForm(true);
             setEditId(null);
             setForm({ name: "", linkedin_url: "", niche: "", notes: "" });
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" />
           Add Competitor
-        </button>
+        </Button>
       </div>
 
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-xl border border-gray-200 p-6 space-y-4"
-        >
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900">
+      {/* Add/Edit Competitor Dialog */}
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowForm(false);
+            setEditId(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
               {editId ? "Edit Competitor" : "Add Competitor"}
-            </h3>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false);
-                setEditId(null);
-              }}
-              className="p-1.5 hover:bg-gray-100 rounded-lg"
-            >
-              <X className="w-5 h-5 text-gray-400" />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+            </DialogTitle>
+            <DialogDescription>
+              {editId
+                ? "Update the details for this competitor."
+                : "Track a new competitor to analyze their content strategy."}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Name
+                </label>
+                <Input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="Competitor name"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Niche
+                </label>
+                <Input
+                  type="text"
+                  value={form.niche}
+                  onChange={(e) => setForm({ ...form, niche: e.target.value })}
+                  placeholder="e.g., Tech Leadership"
+                />
+              </div>
+            </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={inputClass}
-                placeholder="Competitor name"
-                required
+              <label className="block text-sm font-medium text-stone-700 mb-1">
+                LinkedIn URL
+              </label>
+              <Input
+                type="url"
+                value={form.linkedin_url}
+                onChange={(e) =>
+                  setForm({ ...form, linkedin_url: e.target.value })
+                }
+                placeholder="https://linkedin.com/in/..."
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Niche</label>
-              <input
-                type="text"
-                value={form.niche}
-                onChange={(e) => setForm({ ...form, niche: e.target.value })}
-                className={inputClass}
-                placeholder="e.g., Tech Leadership"
+              <label className="block text-sm font-medium text-stone-700 mb-1">
+                Notes
+              </label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                rows={3}
+                placeholder="What makes them stand out? What can you learn?"
               />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
-            <input
-              type="url"
-              value={form.linkedin_url}
-              onChange={(e) => setForm({ ...form, linkedin_url: e.target.value })}
-              className={inputClass}
-              placeholder="https://linkedin.com/in/..."
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              rows={3}
-              className={inputClass}
-              placeholder="What makes them stand out? What can you learn?"
-            />
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-            >
-              {editId ? "Update" : "Add Competitor"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(false);
-                setEditId(null);
-              }}
-              className="px-5 py-2.5 text-gray-700 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-            >
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditId(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editId ? "Update" : "Add Competitor"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete competitor</DialogTitle>
+            <DialogDescription>
+              This will permanently remove this competitor and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
               Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteTarget !== null) {
+                  handleDelete(deleteTarget);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {competitors.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-600">No competitors tracked yet</p>
-          <p className="text-xs text-gray-400 mt-1">
+        <div className="text-center py-16 bg-white rounded-2xl border border-stone-200/60">
+          <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <Users className="w-8 h-8 text-stone-400" />
+          </div>
+          <p className="text-sm font-medium text-stone-600">No competitors tracked yet</p>
+          <p className="text-xs text-stone-500 mt-1">
             Add competitors to analyze their content strategy
           </p>
-          <button
+          <Button
             onClick={() => setShowForm(true)}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
+            className="mt-4"
           >
             <Plus className="w-4 h-4" />
             Add Competitor
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {competitors.map((comp) => (
             <div
               key={comp.id}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow"
+              className="bg-white rounded-2xl border border-stone-200/60 p-5 hover:shadow-sm transition-shadow"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">{comp.name}</h3>
+                  <h3 className="text-sm font-semibold text-stone-900">{comp.name}</h3>
                   {comp.niche && (
-                    <span className="text-xs px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 font-medium mt-1 inline-block">
+                    <Badge
+                      variant="secondary"
+                      className="mt-1 bg-stone-100 text-stone-700"
+                    >
                       {comp.niche}
-                    </span>
+                    </Badge>
                   )}
                 </div>
                 <div className="flex gap-1">
@@ -233,20 +284,20 @@ const CompetitorsPage = memo(function CompetitorsPage() {
                       href={comp.linkedin_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+                      className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}
                   <button
                     onClick={() => handleEdit(comp)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+                    className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => handleDelete(comp.id)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600"
+                    onClick={() => setDeleteTarget(comp.id)}
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-600"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -254,33 +305,33 @@ const CompetitorsPage = memo(function CompetitorsPage() {
               </div>
 
               {comp.notes && (
-                <p className="text-xs text-gray-500 mt-3 leading-relaxed">
+                <p className="text-xs text-stone-500 mt-3 leading-relaxed">
                   {comp.notes}
                 </p>
               )}
 
-              <div className="flex gap-4 mt-4 pt-3 border-t border-gray-100">
+              <div className="flex gap-4 mt-4 pt-3 border-t border-stone-200/60">
                 <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">
+                  <p className="text-lg font-semibold text-stone-900">
                     {comp.post_count}
                   </p>
-                  <p className="text-[10px] text-gray-500 uppercase">Posts</p>
+                  <p className="text-[11px] text-stone-600 uppercase">Posts</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">
+                  <p className="text-lg font-semibold text-stone-900">
                     {comp.avg_impressions
                       ? Math.round(comp.avg_impressions).toLocaleString()
                       : "-"}
                   </p>
-                  <p className="text-[10px] text-gray-500 uppercase">Avg Imp</p>
+                  <p className="text-[11px] text-stone-600 uppercase">Avg Imp</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-indigo-600">
+                  <p className="text-lg font-semibold text-stone-700">
                     {comp.avg_engagement_score
                       ? `${(comp.avg_engagement_score * 100).toFixed(1)}%`
                       : "-"}
                   </p>
-                  <p className="text-[10px] text-gray-500 uppercase">Avg Eng</p>
+                  <p className="text-[11px] text-stone-600 uppercase">Avg Eng</p>
                 </div>
               </div>
             </div>

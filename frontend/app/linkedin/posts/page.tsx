@@ -7,7 +7,12 @@ import PostForm from "../components/PostForm";
 import PostCard from "../components/PostCard";
 import MetricsForm from "../components/MetricsForm";
 import { useToast } from "../components/Toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Post, Pillar, Metrics } from "@/types/linkedin";
+
+const selectClass =
+  "flex-1 sm:flex-none w-full sm:w-auto border border-stone-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent transition-colors";
 
 const PostsPage = memo(function PostsPage() {
   const toast = useToast();
@@ -39,7 +44,6 @@ const PostsPage = memo(function PostsPage() {
     }
     setPosts(postsList);
 
-    // Batch fetch metrics for all posts at once
     if (postsList.length > 0) {
       try {
         const ids = postsList.map((p: Post) => p.id).join(",");
@@ -126,9 +130,7 @@ const PostsPage = memo(function PostsPage() {
   const handleAnalyze = async (postId: number) => {
     setAnalyzing(postId);
     try {
-      const res = await fetch(`/api/linkedin/analyze/${postId}`, {
-        method: "POST",
-      });
+      const res = await fetch(`/api/linkedin/analyze/${postId}`, { method: "POST" });
       const data = await res.json();
       const cls = data.classification ? ` · ${data.classification}` : "";
       toast.success(`Analysis complete${cls} — ${data.learnings_extracted} learnings extracted.`);
@@ -193,7 +195,6 @@ const PostsPage = memo(function PostsPage() {
 
   const pillarMap = Object.fromEntries(pillars.map((p) => [p.id, p]));
 
-  // Client-side search, type filter, classification filter, and sorting
   const filteredPosts = posts
     .filter((post) => {
       if (filterType && post.post_type !== filterType) return false;
@@ -209,100 +210,64 @@ const PostsPage = memo(function PostsPage() {
       return true;
     })
     .sort((a, b) => {
-      if (sortBy === "date") {
-        return (b.posted_at || "").localeCompare(a.posted_at || "");
-      }
-      if (sortBy === "engagement") {
-        const engA = metricsMap[a.id]?.engagement_score || 0;
-        const engB = metricsMap[b.id]?.engagement_score || 0;
-        return engB - engA;
-      }
-      if (sortBy === "impressions") {
-        const impA = metricsMap[a.id]?.impressions || 0;
-        const impB = metricsMap[b.id]?.impressions || 0;
-        return impB - impA;
-      }
-      if (sortBy === "comments") {
-        const comA = metricsMap[a.id]?.comments || 0;
-        const comB = metricsMap[b.id]?.comments || 0;
-        return comB - comA;
-      }
-      if (sortBy === "saves") {
-        const savA = metricsMap[a.id]?.saves || 0;
-        const savB = metricsMap[b.id]?.saves || 0;
-        return savB - savA;
-      }
+      if (sortBy === "date") return (b.posted_at || "").localeCompare(a.posted_at || "");
+      if (sortBy === "engagement") return (metricsMap[b.id]?.engagement_score || 0) - (metricsMap[a.id]?.engagement_score || 0);
+      if (sortBy === "impressions") return (metricsMap[b.id]?.impressions || 0) - (metricsMap[a.id]?.impressions || 0);
+      if (sortBy === "comments") return (metricsMap[b.id]?.comments || 0) - (metricsMap[a.id]?.comments || 0);
+      if (sortBy === "saves") return (metricsMap[b.id]?.saves || 0) - (metricsMap[a.id]?.saves || 0);
       return 0;
     });
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Post Library</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-stone-900 tracking-tight">Post Library</h1>
+          <p className="text-sm text-stone-500 mt-1">
             {filteredPosts.length} of {posts.length} post{posts.length !== 1 ? "s" : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="outline"
             onClick={handleBatchAnalyze}
             disabled={batchAnalyzing || posts.length === 0}
-            className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="gap-2 rounded-xl border-stone-200"
           >
             <Sparkles className="w-4 h-4" />
             Analyze All
-          </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-          >
+          </Button>
+          <Button onClick={() => setShowForm(true)} className="gap-2 rounded-xl active:scale-[0.98] transition-all">
             <Plus className="w-4 h-4" />
             Add Post
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Search & Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 space-y-3">
+      <div className="bg-white rounded-2xl border border-stone-200/60 px-4 py-3 space-y-3">
         <div className="relative">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
+          <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search posts by content, tags, or hook..."
-            className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+            className="pl-10 rounded-xl border-stone-200 focus-visible:ring-stone-400"
           />
         </div>
         <div className="flex gap-3 items-center flex-wrap">
-          <Filter className="w-4 h-4 text-gray-400 shrink-0" />
-          <select
-            value={filterAuthor}
-            onChange={(e) => setFilterAuthor(e.target.value)}
-            className="flex-1 sm:flex-none w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-          >
+          <Filter className="w-4 h-4 text-stone-400 shrink-0" />
+          <select value={filterAuthor} onChange={(e) => setFilterAuthor(e.target.value)} className={selectClass}>
             <option value="">All authors</option>
             <option value="me">My posts</option>
             <option value="__others__">Others&apos; posts</option>
           </select>
-          <select
-            value={filterPillar}
-            onChange={(e) => setFilterPillar(e.target.value)}
-            className="flex-1 sm:flex-none w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-          >
+          <select value={filterPillar} onChange={(e) => setFilterPillar(e.target.value)} className={selectClass}>
             <option value="">All pillars</option>
-            {pillars.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
+            {pillars.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
           </select>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="flex-1 sm:flex-none w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-          >
+          <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className={selectClass}>
             <option value="">All types</option>
             <option value="text">Text</option>
             <option value="carousel">Carousel</option>
@@ -312,23 +277,15 @@ const PostsPage = memo(function PostsPage() {
             <option value="video">Video</option>
             <option value="article">Article</option>
           </select>
-          <select
-            value={filterClassification}
-            onChange={(e) => setFilterClassification(e.target.value)}
-            className="flex-1 sm:flex-none w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-          >
+          <select value={filterClassification} onChange={(e) => setFilterClassification(e.target.value)} className={selectClass}>
             <option value="">All results</option>
             <option value="hit">Hit</option>
             <option value="average">Average</option>
             <option value="miss">Miss</option>
           </select>
           <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2">
-            <ArrowUpDown className="w-4 h-4 text-gray-400 shrink-0" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="flex-1 sm:flex-none border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-            >
+            <ArrowUpDown className="w-4 h-4 text-stone-400 shrink-0" />
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={selectClass}>
               <option value="date">Sort by Date</option>
               <option value="engagement">Sort by Engagement</option>
               <option value="impressions">Sort by Impressions</option>
@@ -339,16 +296,7 @@ const PostsPage = memo(function PostsPage() {
         </div>
       </div>
 
-      {/* Add Post Form */}
-      {showForm && (
-        <PostForm
-          pillars={pillars}
-          onSubmit={handleCreatePost}
-          onCancel={() => setShowForm(false)}
-        />
-      )}
-
-      {/* Edit Post Form */}
+      {showForm && <PostForm pillars={pillars} onSubmit={handleCreatePost} onCancel={() => setShowForm(false)} />}
       {editingPost && (
         <PostForm
           pillars={pillars}
@@ -368,64 +316,43 @@ const PostsPage = memo(function PostsPage() {
           }}
         />
       )}
-
-      {/* Metrics Form */}
       {metricsPostId && (
-        <MetricsForm
-          postId={metricsPostId}
-          author={metricsPostAuthor}
-          onSubmit={handleAddMetrics}
-          onCancel={() => setMetricsPostId(null)}
-        />
+        <MetricsForm postId={metricsPostId} author={metricsPostAuthor} onSubmit={handleAddMetrics} onCancel={() => setMetricsPostId(null)} />
       )}
 
       {/* Post List */}
       <div className="space-y-4">
         {filteredPosts.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-7 h-7 text-blue-400" />
+          <div className="text-center py-20 bg-white rounded-2xl border border-stone-200/60">
+            <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-7 h-7 text-stone-400" />
             </div>
-            <p className="text-base font-semibold text-gray-800">
+            <p className="text-base font-semibold text-stone-800">
               {searchQuery || filterType || filterClassification ? "No matching posts" : "No posts yet"}
             </p>
-            <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">
+            <p className="text-sm text-stone-400 mt-1 max-w-xs mx-auto">
               {searchQuery || filterType || filterClassification
                 ? "Try adjusting your filters or search query"
                 : "Log your LinkedIn posts to start tracking performance and getting AI insights"}
             </p>
             {!searchQuery && !filterType && !filterClassification && (
-              <button
-                onClick={() => setShowForm(true)}
-                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-              >
+              <Button onClick={() => setShowForm(true)} className="mt-5 gap-2 rounded-xl active:scale-[0.98] transition-all">
                 <Plus className="w-4 h-4" />
                 Add Post
-              </button>
+              </Button>
             )}
           </div>
         ) : (
           filteredPosts.map((post) => (
             <div key={post.id} className="relative group/link">
-              <Link
-                href={`/linkedin/posts/${post.id}`}
-                className="absolute inset-0 z-0"
-                aria-label={`View post #${post.id} details`}
-              />
+              <Link href={`/linkedin/posts/${post.id}`} className="absolute inset-0 z-0" aria-label={`View post #${post.id} details`} />
               <div className="relative z-10 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto">
                 <PostCard
                   post={post}
-                  pillarName={
-                    post.pillar_id ? pillarMap[post.pillar_id]?.name : undefined
-                  }
-                  pillarColor={
-                    post.pillar_id ? pillarMap[post.pillar_id]?.color : undefined
-                  }
+                  pillarName={post.pillar_id ? pillarMap[post.pillar_id]?.name : undefined}
+                  pillarColor={post.pillar_id ? pillarMap[post.pillar_id]?.color : undefined}
                   latestMetrics={metricsMap[post.id] || null}
-                  onAddMetrics={(id) => {
-                    setMetricsPostId(id);
-                    setMetricsPostAuthor(post.author);
-                  }}
+                  onAddMetrics={(id) => { setMetricsPostId(id); setMetricsPostAuthor(post.author); }}
                   onAnalyze={handleAnalyze}
                   onEdit={handleEditPost}
                   onDelete={handleDelete}
@@ -438,12 +365,10 @@ const PostsPage = memo(function PostsPage() {
 
       {(analyzing || batchAnalyzing) && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl p-6 flex items-center gap-3 shadow-xl">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600" />
-            <span className="text-sm text-gray-700">
-              {batchAnalyzing
-                ? "Batch analyzing all posts with AI..."
-                : "Analyzing post with AI..."}
+          <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-xl">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-stone-600" />
+            <span className="text-sm text-stone-700">
+              {batchAnalyzing ? "Batch analyzing all posts with AI..." : "Analyzing post with AI..."}
             </span>
           </div>
         </div>

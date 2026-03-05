@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useState, useCallback } from "react";
 import { CheckCircle2, Link2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { AuthStatus } from "@/types/linkedin";
 
 const LinkedInAuthStatus = memo(function LinkedInAuthStatus() {
@@ -22,17 +23,17 @@ const LinkedInAuthStatus = memo(function LinkedInAuthStatus() {
 
   if (status.authenticated) {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5">
+      <Badge variant="secondary" className="gap-1.5 bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-50 rounded-xl px-3 py-1.5">
         <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-        <span className="font-medium">LinkedIn connected</span>
-      </div>
+        LinkedIn connected
+      </Badge>
     );
   }
 
   return (
     <a
       href="/api/linkedin/auth/start"
-      className="flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5 hover:bg-indigo-100 transition-colors font-medium"
+      className="inline-flex items-center gap-1.5 text-xs text-stone-600 bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 hover:bg-stone-100 transition-colors font-medium"
     >
       <Link2 className="w-3.5 h-3.5 shrink-0" />
       Connect LinkedIn

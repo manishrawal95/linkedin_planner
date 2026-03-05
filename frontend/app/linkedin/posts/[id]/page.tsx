@@ -36,6 +36,14 @@ import {
 } from "recharts";
 import MetricsForm from "../../components/MetricsForm";
 import LinkedInPreview from "../../components/LinkedInPreview";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  CHART_COLORS,
+  chartAxisStyle,
+  chartGridStyle,
+  chartTooltipStyle,
+} from "@/lib/chart-theme";
 import type { Post, MetricSnapshot, Pillar, Learning } from "@/types/linkedin";
 
 /* ── Constants ────────────────────────────────────────────────── */
@@ -56,7 +64,7 @@ function formatElapsed(snapshotAt: string, postedAt: string | null): string | nu
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  text: "bg-gray-100 text-gray-600",
+  text: "bg-stone-100 text-stone-600",
   carousel: "bg-orange-100 text-orange-700",
   "personal image": "bg-emerald-100 text-emerald-700",
   "social proof image": "bg-teal-100 text-teal-700",
@@ -69,7 +77,7 @@ const TYPE_COLORS: Record<string, string> = {
 const IMPACT_STYLES: Record<string, string> = {
   positive: "bg-green-100 text-green-700",
   negative: "bg-red-100 text-red-700",
-  neutral: "bg-gray-100 text-gray-600",
+  neutral: "bg-stone-100 text-stone-600",
 };
 
 /* ── Page Component ───────────────────────────────────────────── */
@@ -202,24 +210,26 @@ export default function PostDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-600" />
       </div>
     );
   }
 
   if (error || !post) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         <Link
           href="/linkedin/posts"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-stone-700 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Posts
         </Link>
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-600">
+        <div className="text-center py-16 bg-white rounded-2xl border border-stone-200/60">
+          <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-8 h-8 text-stone-400" />
+          </div>
+          <p className="text-sm font-medium text-stone-600">
             {error || "Post not found"}
           </p>
         </div>
@@ -230,18 +240,18 @@ export default function PostDetailPage() {
   /* ── Render ─────────────────────────────────────────────────── */
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Back button */}
       <Link
         href="/linkedin/posts"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+        className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-stone-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Posts
       </Link>
 
       {/* ── Post Detail Card ──────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-stone-200/60 overflow-hidden">
         {pillar?.color && (
           <div className="h-1.5" style={{ backgroundColor: pillar.color }} />
         )}
@@ -249,61 +259,62 @@ export default function PostDetailPage() {
         <div className="p-6 space-y-5">
           {/* Badges row */}
           <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={`text-xs font-medium px-2.5 py-1 rounded-md ${
+            <Badge
+              variant="ghost"
+              className={
                 post.author === "me"
-                  ? "bg-indigo-100 text-indigo-700"
-                  : "bg-gray-100 text-gray-600"
-              }`}
+                  ? "bg-stone-100 text-stone-700"
+                  : "bg-stone-100 text-stone-600"
+              }
             >
-              <User className="w-3 h-3 inline mr-1 -mt-0.5" />
+              <User className="w-3 h-3 mr-1 -mt-0.5" />
               {post.author === "me" ? "My post" : post.author}
-            </span>
+            </Badge>
 
-            <span
-              className={`text-xs font-medium px-2.5 py-1 rounded-md ${
-                TYPE_COLORS[post.post_type] || "bg-gray-100 text-gray-600"
-              }`}
+            <Badge
+              variant="ghost"
+              className={TYPE_COLORS[post.post_type] || "bg-stone-100 text-stone-600"}
             >
               {post.post_type}
-            </span>
+            </Badge>
 
             {pillar && (
-              <span
-                className="text-xs font-medium px-2.5 py-1 rounded-md"
+              <Badge
+                variant="ghost"
+                className="rounded-full"
                 style={{
                   backgroundColor: `${pillar.color}15`,
                   color: pillar.color,
                 }}
               >
                 {pillar.name}
-              </span>
+              </Badge>
             )}
 
             {post.cta_type !== "none" && (
-              <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-amber-100 text-amber-700">
+              <Badge variant="ghost" className="bg-amber-100 text-amber-700">
                 CTA: {post.cta_type}
-              </span>
+              </Badge>
             )}
 
             {post.classification === "hit" && (
-              <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-green-100 text-green-700">
-                🔥 Hit
-              </span>
+              <Badge variant="ghost" className="bg-emerald-50 text-emerald-700">
+                Hit
+              </Badge>
             )}
             {post.classification === "average" && (
-              <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-amber-100 text-amber-700">
+              <Badge variant="ghost" className="bg-stone-100 text-stone-500">
                 Avg
-              </span>
+              </Badge>
             )}
             {post.classification === "miss" && (
-              <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-red-100 text-red-700">
+              <Badge variant="ghost" className="bg-red-50 text-red-600">
                 Miss
-              </span>
+              </Badge>
             )}
 
             {post.posted_at && (
-              <span className="text-xs text-gray-400 ml-auto flex items-center gap-1">
+              <span className="text-xs text-stone-400 ml-auto flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {new Date(post.posted_at).toLocaleDateString("en-US", {
                   weekday: "short",
@@ -319,11 +330,11 @@ export default function PostDetailPage() {
 
           {/* Hook line */}
           {post.hook_line && (
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-lg p-4">
-              <p className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-1">
+            <div className="bg-gradient-to-r from-stone-50 to-stone-100/60 border border-stone-200 rounded-lg p-4">
+              <p className="text-xs font-semibold text-stone-600 uppercase tracking-wider mb-1">
                 Hook Line
               </p>
-              <p className="text-sm font-medium text-gray-800 italic leading-relaxed">
+              <p className="text-sm font-medium text-stone-800 italic leading-relaxed">
                 &ldquo;{post.hook_line}&rdquo;
               </p>
             </div>
@@ -331,7 +342,7 @@ export default function PostDetailPage() {
 
           {/* Full content */}
           <div className="prose prose-sm max-w-none">
-            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+            <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap">
               {post.content}
             </p>
           </div>
@@ -339,11 +350,11 @@ export default function PostDetailPage() {
           {/* Tags */}
           {tags.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Tag className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              <Tag className="w-3.5 h-3.5 text-stone-400 shrink-0" />
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full"
+                  className="text-xs bg-stone-100 text-stone-500 px-2.5 py-1 rounded-full"
                 >
                   #{tag}
                 </span>
@@ -352,7 +363,7 @@ export default function PostDetailPage() {
           )}
 
           {/* Meta row */}
-          <div className="flex items-center gap-4 text-xs text-gray-400 pt-2 border-t border-gray-100">
+          <div className="flex items-center gap-4 text-xs text-stone-400 pt-2 border-t border-stone-200/60">
             <span className="flex items-center gap-1">
               <Hash className="w-3.5 h-3.5" />
               {post.word_count} words
@@ -362,7 +373,7 @@ export default function PostDetailPage() {
                 href={post.post_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-indigo-500 hover:text-indigo-700 transition-colors"
+                className="flex items-center gap-1 text-stone-600 hover:text-stone-700 transition-colors"
               >
                 <LinkIcon className="w-3.5 h-3.5" />
                 View on LinkedIn
@@ -377,38 +388,45 @@ export default function PostDetailPage() {
 
       {/* ── Action Buttons ────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-wrap">
-        <button
+        <Button
           onClick={() => setShowMetricsForm((v) => !v)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+          className="rounded-xl active:scale-[0.98] transition-all"
         >
           <BarChart3 className="w-4 h-4" />
           {showMetricsForm ? "Hide Metrics Form" : "Add Metrics"}
-        </button>
+        </Button>
 
-        <button
+        <Button
           onClick={handleAnalyze}
           disabled={analyzing}
-          className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm"
+          variant="secondary"
+          className="rounded-xl active:scale-[0.98] transition-all"
         >
           <Sparkles className="w-4 h-4" />
           {analyzing ? "Analyzing..." : "Analyze with AI"}
-        </button>
+        </Button>
 
         {post.post_url && (
-          <a
-            href={post.post_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2.5 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+          <Button
+            variant="outline"
+            className="rounded-xl active:scale-[0.98] transition-all"
+            asChild
           >
-            <ExternalLink className="w-4 h-4" />
-            Open on LinkedIn
-          </a>
+            <a
+              href={post.post_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open on LinkedIn
+            </a>
+          </Button>
         )}
 
-        <button
+        <Button
           onClick={handleCopy}
-          className="flex items-center gap-2 px-4 py-2.5 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+          variant="outline"
+          className="rounded-xl active:scale-[0.98] transition-all"
         >
           {copied ? (
             <Check className="w-4 h-4 text-green-600" />
@@ -416,14 +434,14 @@ export default function PostDetailPage() {
             <Copy className="w-4 h-4" />
           )}
           {copied ? "Copied!" : "Copy Content"}
-        </button>
+        </Button>
       </div>
 
       {/* ── Analyze Result Card ───────────────────────────────── */}
       {analyzeResult && (
-        <div className={`rounded-xl border p-4 flex items-center gap-3 ${
+        <div className={`rounded-2xl border p-4 flex items-center gap-3 ${
           analyzeResult.classification === "hit"
-            ? "bg-green-50 border-green-200 text-green-800"
+            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
             : analyzeResult.classification === "miss"
             ? "bg-red-50 border-red-200 text-red-800"
             : "bg-amber-50 border-amber-200 text-amber-800"
@@ -450,9 +468,9 @@ export default function PostDetailPage() {
       )}
 
       {/* ── LinkedIn Preview Panel ────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Eye className="w-4 h-4 text-gray-400" />
+      <div className="bg-white rounded-2xl border border-stone-200/60 p-5">
+        <h2 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+          <Eye className="w-4 h-4 text-stone-400" />
           LinkedIn Preview
         </h2>
         <LinkedInPreview
@@ -464,53 +482,54 @@ export default function PostDetailPage() {
       </div>
 
       {/* ── Metrics Timeline ──────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-gray-400" />
+      <div className="bg-white rounded-2xl border border-stone-200/60 p-5 space-y-5">
+        <h2 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-stone-400" />
           Metrics Timeline
           {metrics.length > 0 && (
-            <span className="text-xs font-normal text-gray-400 ml-2">
+            <span className="text-xs font-normal text-stone-400 ml-2">
               {metrics.length} snapshot{metrics.length !== 1 ? "s" : ""}
             </span>
           )}
         </h2>
 
         {metrics.length === 0 ? (
-          <div className="text-center py-12 text-sm text-gray-400">
-            No metrics recorded yet. Click &ldquo;Add Metrics&rdquo; to add a
-            snapshot.
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-8 h-8 text-stone-400" />
+            </div>
+            <p className="text-sm text-stone-400">
+              No metrics recorded yet. Click &ldquo;Add Metrics&rdquo; to add a
+              snapshot.
+            </p>
           </div>
         ) : (
           <>
             {/* Chart */}
             {chartData.length > 1 && (
-              <div className="bg-gray-50 rounded-xl p-4">
+              <div className="bg-stone-50 rounded-xl p-4">
                 <ResponsiveContainer width="100%" height={260}>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <CartesianGrid {...chartGridStyle} />
                     <XAxis
                       dataKey="date"
-                      tick={{ fontSize: 11 }}
-                      stroke="#3949AB"
+                      tick={chartAxisStyle}
+                      stroke={CHART_COLORS.secondary}
                     />
                     <YAxis
                       yAxisId="left"
-                      tick={{ fontSize: 11 }}
-                      stroke="#3949AB"
+                      tick={chartAxisStyle}
+                      stroke={CHART_COLORS.secondary}
                       unit="%"
                     />
                     <YAxis
                       yAxisId="right"
                       orientation="right"
-                      tick={{ fontSize: 11 }}
-                      stroke="#3949AB"
+                      tick={chartAxisStyle}
+                      stroke={CHART_COLORS.secondary}
                     />
                     <Tooltip
-                      contentStyle={{
-                        fontSize: 12,
-                        borderRadius: 8,
-                        border: "1px solid #e5e7eb",
-                      }}
+                      {...chartTooltipStyle}
                       formatter={(value: number | undefined, name?: string) => {
                         const v = value ?? 0;
                         if (name === "engagement")
@@ -522,30 +541,30 @@ export default function PostDetailPage() {
                       yAxisId="left"
                       type="monotone"
                       dataKey="engagement"
-                      stroke="#6366f1"
+                      stroke={CHART_COLORS.primary}
                       strokeWidth={2}
-                      dot={{ r: 4, fill: "#6366f1" }}
+                      dot={{ r: 4, fill: CHART_COLORS.primary }}
                       name="engagement"
                     />
                     <Line
                       yAxisId="right"
                       type="monotone"
                       dataKey="impressions"
-                      stroke="#8b5cf6"
+                      stroke={CHART_COLORS.accent}
                       strokeWidth={2}
                       strokeDasharray="5 5"
-                      dot={{ r: 4, fill: "#8b5cf6" }}
+                      dot={{ r: 4, fill: CHART_COLORS.accent }}
                       name="impressions"
                     />
                   </LineChart>
                 </ResponsiveContainer>
-                <div className="flex items-center justify-center gap-6 mt-2 text-xs text-gray-500">
+                <div className="flex items-center justify-center gap-6 mt-2 text-xs text-stone-500">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-0.5 bg-indigo-500 rounded inline-block" />
+                    <span className="w-3 h-0.5 rounded inline-block" style={{ backgroundColor: CHART_COLORS.primary }} />
                     Engagement %
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-0.5 bg-purple-500 rounded inline-block border-dashed" />
+                    <span className="w-3 h-0.5 rounded inline-block border-dashed" style={{ backgroundColor: CHART_COLORS.accent }} />
                     Impressions
                   </span>
                 </div>
@@ -556,42 +575,42 @@ export default function PostDetailPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                  <tr className="border-b border-stone-200">
+                    <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       Snapshot
                     </th>
-                    <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-left text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       Date
                     </th>
-                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       <Eye className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                       Impr.
                     </th>
-                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       <Users className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                       Reach
                     </th>
-                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       <Heart className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                       React
                     </th>
-                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       <MessageCircle className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                       Comm
                     </th>
-                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       <Repeat2 className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                       Reps
                     </th>
-                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       <Bookmark className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                       Saves
                     </th>
-                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       <Send className="w-3 h-3 inline -mt-0.5 mr-0.5" />
                       Sends
                     </th>
-                    <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 px-2">
+                    <th className="text-right text-xs font-semibold text-stone-500 uppercase tracking-wider py-2 px-2">
                       Eng %
                     </th>
                   </tr>
@@ -600,18 +619,18 @@ export default function PostDetailPage() {
                   {metrics.map((m) => (
                     <tr
                       key={m.id}
-                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                      className="border-b border-stone-100 hover:bg-stone-50 transition-colors"
                     >
                       <td className="py-2.5 px-2">
                         {formatElapsed(m.snapshot_at, post.posted_at) ? (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600">
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-stone-100 text-stone-600">
                             {formatElapsed(m.snapshot_at, post.posted_at)}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400">--</span>
+                          <span className="text-xs text-stone-400">--</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-2 text-xs text-gray-500">
+                      <td className="py-2.5 px-2 text-xs text-stone-500">
                         {new Date(m.snapshot_at + "Z").toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -619,29 +638,29 @@ export default function PostDetailPage() {
                           minute: "2-digit",
                         })}
                       </td>
-                      <td className="py-2.5 px-2 text-right text-xs font-medium text-gray-700">
+                      <td className="py-2.5 px-2 text-right text-xs font-medium text-stone-700">
                         {m.impressions.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-2 text-right text-xs text-gray-600">
+                      <td className="py-2.5 px-2 text-right text-xs text-stone-600">
                         {m.members_reached.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-2 text-right text-xs text-gray-600">
+                      <td className="py-2.5 px-2 text-right text-xs text-stone-600">
                         {m.likes.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-2 text-right text-xs text-gray-600">
+                      <td className="py-2.5 px-2 text-right text-xs text-stone-600">
                         {m.comments.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-2 text-right text-xs text-gray-600">
+                      <td className="py-2.5 px-2 text-right text-xs text-stone-600">
                         {m.reposts.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-2 text-right text-xs text-gray-600">
+                      <td className="py-2.5 px-2 text-right text-xs text-stone-600">
                         {m.saves.toLocaleString()}
                       </td>
-                      <td className="py-2.5 px-2 text-right text-xs text-gray-600">
+                      <td className="py-2.5 px-2 text-right text-xs text-stone-600">
                         {m.sends.toLocaleString()}
                       </td>
                       <td className="py-2.5 px-2 text-right">
-                        <span className="text-xs font-bold text-indigo-600">
+                        <span className="text-xs font-semibold text-stone-700">
                           {(m.engagement_score * 100).toFixed(2)}%
                         </span>
                       </td>
@@ -655,47 +674,53 @@ export default function PostDetailPage() {
       </div>
 
       {/* ── Learnings Section ─────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-          <Lightbulb className="w-4 h-4 text-gray-400" />
+      <div className="bg-white rounded-2xl border border-stone-200/60 p-5 space-y-4">
+        <h2 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
+          <Lightbulb className="w-4 h-4 text-stone-400" />
           Learnings
           {learnings.length > 0 && (
-            <span className="text-xs font-normal text-gray-400 ml-2">
+            <span className="text-xs font-normal text-stone-400 ml-2">
               {learnings.length} insight{learnings.length !== 1 ? "s" : ""}
             </span>
           )}
         </h2>
 
         {learnings.length === 0 ? (
-          <div className="text-center py-10 text-sm text-gray-400">
-            No learnings yet. Click &ldquo;Analyze with AI&rdquo; to extract
-            insights from this post.
+          <div className="text-center py-10">
+            <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Lightbulb className="w-8 h-8 text-stone-400" />
+            </div>
+            <p className="text-sm text-stone-400">
+              No learnings yet. Click &ldquo;Analyze with AI&rdquo; to extract
+              insights from this post.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {learnings.map((learning) => (
               <div
                 key={learning.id}
-                className="p-4 rounded-xl bg-gray-50 border border-gray-100 space-y-3"
+                className="p-4 rounded-xl bg-stone-50 border border-stone-200/60 space-y-3"
               >
-                <p className="text-sm text-gray-800 leading-relaxed">
+                <p className="text-sm text-stone-800 leading-relaxed">
                   {learning.insight}
                 </p>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
+                  <Badge variant="ghost" className="bg-blue-100 text-blue-700 rounded-md">
                     {learning.category}
-                  </span>
-                  <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded-md ${
+                  </Badge>
+                  <Badge
+                    variant="ghost"
+                    className={`rounded-md ${
                       IMPACT_STYLES[learning.impact] ||
-                      "bg-gray-100 text-gray-600"
+                      "bg-stone-100 text-stone-600"
                     }`}
                   >
                     {learning.impact}
-                  </span>
+                  </Badge>
                   {learning.times_confirmed > 1 && (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-stone-400">
                       Confirmed {learning.times_confirmed}x
                     </span>
                   )}
@@ -703,18 +728,18 @@ export default function PostDetailPage() {
 
                 {/* Confidence bar */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 shrink-0 w-16">
+                  <span className="text-xs text-stone-500 shrink-0 w-16">
                     Confidence
                   </span>
-                  <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                  <div className="flex-1 bg-stone-200 rounded-full h-1.5">
                     <div
-                      className="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all"
+                      className="h-1.5 rounded-full bg-gradient-to-r from-stone-500 to-stone-400 transition-all"
                       style={{
                         width: `${Math.min(100, learning.confidence * 100)}%`,
                       }}
                     />
                   </div>
-                  <span className="text-xs font-semibold text-indigo-600 shrink-0">
+                  <span className="text-xs font-semibold text-stone-600 shrink-0">
                     {(learning.confidence * 100).toFixed(0)}%
                   </span>
                 </div>
@@ -727,9 +752,9 @@ export default function PostDetailPage() {
       {/* Analyzing overlay */}
       {analyzing && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl p-6 flex items-center gap-3 shadow-xl">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600" />
-            <span className="text-sm text-gray-700">
+          <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-xl">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-stone-600" />
+            <span className="text-sm text-stone-700">
               Analyzing post with AI...
             </span>
           </div>

@@ -2,6 +2,8 @@
 
 import { memo, useState } from "react";
 import { BarChart3, X, Eye, Users, UserPlus, Heart, MessageCircle, Repeat2, Bookmark, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface MetricsFormProps {
   postId: number;
@@ -47,8 +49,6 @@ const MetricsForm = memo(function MetricsForm({
         100
       : 0;
 
-  // For other users, only show metrics visible on LinkedIn (reactions, comments, reposts).
-  // Impressions, saves, sends, profile viewers, followers are private to the post author.
   const fields = isOther
     ? [
         { key: "likes", label: "Reactions", icon: Heart, section: "public" },
@@ -68,32 +68,34 @@ const MetricsForm = memo(function MetricsForm({
       ] as const;
 
   const sections = isOther
-    ? [{ id: "public", label: "Public Metrics", color: "text-indigo-600" }]
+    ? [{ id: "public", label: "Public Metrics", color: "text-stone-600" }]
     : [
-        { id: "discovery", label: "Discovery", color: "text-blue-600" },
-        { id: "profile", label: "Profile Activity", color: "text-purple-600" },
-        { id: "engagement", label: "Social Engagement", color: "text-green-600" },
+        { id: "discovery", label: "Discovery", color: "text-stone-600" },
+        { id: "profile", label: "Profile Activity", color: "text-stone-600" },
+        { id: "engagement", label: "Social Engagement", color: "text-stone-600" },
       ];
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-xl border border-gray-200 p-5 space-y-5"
+      className="bg-white rounded-2xl border border-stone-200/60 p-5 space-y-5"
     >
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-indigo-600" />
+        <h3 className="text-lg font-semibold text-stone-900 tracking-tight flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-stone-400" />
           Update Metrics — Post #{postId}
-          {isOther && <span className="text-xs font-normal text-gray-400 ml-2">(Public metrics only)</span>}
+          {isOther && <span className="text-xs font-normal text-stone-400 ml-2">(Public metrics only)</span>}
         </h3>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onCancel}
-          className="p-1.5 hover:bg-gray-100 rounded-lg"
+          className="h-8 w-8 rounded-xl text-stone-400 hover:text-stone-700"
           aria-label="Close metrics form"
         >
-          <X className="w-5 h-5 text-gray-400" />
-        </button>
+          <X className="w-5 h-5" />
+        </Button>
       </div>
 
       {sections.map((section) => (
@@ -105,19 +107,19 @@ const MetricsForm = memo(function MetricsForm({
             {fields
               .filter((f) => f.section === section.id)
               .map((field) => (
-                <div key={field.key} className="relative">
-                  <label className="flex items-center gap-1.5 text-sm font-medium text-gray-600 mb-1">
+                <div key={field.key}>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-stone-500 mb-1">
                     <field.icon className="w-3.5 h-3.5" />
                     {field.label}
                   </label>
-                  <input
+                  <Input
                     type="number"
                     min={0}
                     value={form[field.key]}
                     onChange={(e) =>
                       setForm({ ...form, [field.key]: parseInt(e.target.value) || 0 })
                     }
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 focus:bg-white transition-colors"
+                    className="rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus-visible:ring-stone-400"
                   />
                 </div>
               ))}
@@ -126,15 +128,15 @@ const MetricsForm = memo(function MetricsForm({
       ))}
 
       {!isOther && (
-        <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100">
+        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/60">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-700">Engagement Score</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                (comments×3 + reposts×2 + saves×2 + sends×1.5 + reactions) / impressions
+              <p className="text-sm font-medium text-stone-700">Engagement Score</p>
+              <p className="text-xs text-stone-400 mt-0.5">
+                (comments x3 + reposts x2 + saves x2 + sends x1.5 + reactions) / impressions
               </p>
             </div>
-            <div className="text-2xl font-bold text-indigo-600">
+            <div className="text-2xl font-semibold text-stone-900">
               {engagementScore.toFixed(2)}%
             </div>
           </div>
@@ -142,20 +144,12 @@ const MetricsForm = memo(function MetricsForm({
       )}
 
       <div className="flex gap-3 pt-1">
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-        >
+        <Button type="submit" disabled={saving} className="rounded-xl active:scale-[0.98] transition-all">
           {saving ? "Saving..." : "Save Metrics"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-5 py-2.5 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-        >
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} className="rounded-xl border-stone-200">
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

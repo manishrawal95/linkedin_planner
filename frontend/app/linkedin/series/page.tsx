@@ -1,11 +1,26 @@
 "use client";
 
 import { memo, useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Layers, X, ToggleLeft, ToggleRight, FileText, Clock } from "lucide-react";
+import { Plus, Trash2, Layers, ToggleLeft, ToggleRight, FileText, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { Series, Pillar } from "@/types/linkedin";
 
 const FREQUENCIES = ["daily", "weekly", "biweekly", "monthly"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const selectClass =
+  "w-full border border-stone-200/60 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent transition-colors";
 
 const SeriesPage = memo(function SeriesPage() {
   const [series, setSeries] = useState<Series[]>([]);
@@ -57,6 +72,17 @@ const SeriesPage = memo(function SeriesPage() {
     fetchData();
   }, [fetchData]);
 
+  const resetForm = useCallback(() => {
+    setForm({
+      name: "",
+      description: "",
+      pillar_id: "",
+      frequency: "weekly",
+      preferred_day: "",
+      preferred_time: "",
+    });
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await fetch("/api/linkedin/series", {
@@ -70,14 +96,7 @@ const SeriesPage = memo(function SeriesPage() {
       }),
     });
     setShowForm(false);
-    setForm({
-      name: "",
-      description: "",
-      pillar_id: "",
-      frequency: "weekly",
-      preferred_day: "",
-      preferred_time: "",
-    });
+    resetForm();
     fetchData();
   };
 
@@ -99,169 +118,151 @@ const SeriesPage = memo(function SeriesPage() {
   const pillarMap = Object.fromEntries(pillars.map((p) => [p.id, p]));
 
   const freqColors: Record<string, string> = {
-    daily: "bg-red-100 text-red-700",
-    weekly: "bg-blue-100 text-blue-700",
-    biweekly: "bg-cyan-100 text-cyan-700",
-    monthly: "bg-purple-100 text-purple-700",
+    daily: "bg-stone-200/60 text-stone-700",
+    weekly: "bg-stone-100 text-stone-600",
+    biweekly: "bg-stone-150 text-stone-600",
+    monthly: "bg-stone-100/80 text-stone-500",
   };
-
-  const inputClass =
-    "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-400" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Layers className="w-6 h-6 text-indigo-600" />
-            Content Series
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-stone-900 tracking-tight">Content Series</h1>
+          <p className="text-sm text-stone-500 mt-1">
             {series.length} series, {series.filter((s) => s.is_active).length} active
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-        >
+        <Button onClick={() => setShowForm(true)}>
           <Plus className="w-4 h-4" />
           Add Series
-        </button>
+        </Button>
       </div>
 
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-xl border border-gray-200 p-6 space-y-4"
-        >
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900">New Series</h3>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="p-1.5 hover:bg-gray-100 rounded-lg"
-            >
-              <X className="w-5 h-5 text-gray-400" />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+      {/* New Series Dialog */}
+      <Dialog open={showForm} onOpenChange={(open) => {
+        setShowForm(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New Series</DialogTitle>
+            <DialogDescription>
+              Create a recurring content series for consistency.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Name</label>
+                <Input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="e.g., Monday Motivation"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Pillar</label>
+                <select
+                  value={form.pillar_id}
+                  onChange={(e) => setForm({ ...form, pillar_id: e.target.value })}
+                  className={selectClass}
+                >
+                  <option value="">Any pillar</option>
+                  {pillars.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={inputClass}
-                placeholder="e.g., Monday Motivation"
-                required
+              <label className="block text-sm font-medium text-stone-700 mb-1">Description</label>
+              <Textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={2}
+                placeholder="What's this series about?"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Pillar</label>
-              <select
-                value={form.pillar_id}
-                onChange={(e) => setForm({ ...form, pillar_id: e.target.value })}
-                className={inputClass}
-              >
-                <option value="">Any pillar</option>
-                {pillars.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Frequency</label>
+                <select
+                  value={form.frequency}
+                  onChange={(e) => setForm({ ...form, frequency: e.target.value })}
+                  className={selectClass}
+                >
+                  {FREQUENCIES.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Preferred Day</label>
+                <select
+                  value={form.preferred_day}
+                  onChange={(e) => setForm({ ...form, preferred_day: e.target.value })}
+                  className={selectClass}
+                >
+                  <option value="">Any day</option>
+                  {DAYS.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Preferred Time</label>
+                <Input
+                  type="time"
+                  value={form.preferred_time}
+                  onChange={(e) => setForm({ ...form, preferred_time: e.target.value })}
+                />
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={2}
-              className={inputClass}
-              placeholder="What's this series about?"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
-              <select
-                value={form.frequency}
-                onChange={(e) => setForm({ ...form, frequency: e.target.value })}
-                className={inputClass}
-              >
-                {FREQUENCIES.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Day</label>
-              <select
-                value={form.preferred_day}
-                onChange={(e) => setForm({ ...form, preferred_day: e.target.value })}
-                className={inputClass}
-              >
-                <option value="">Any day</option>
-                {DAYS.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Time</label>
-              <input
-                type="time"
-                value={form.preferred_time}
-                onChange={(e) => setForm({ ...form, preferred_time: e.target.value })}
-                className={inputClass}
-              />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-            >
-              Create Series
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="px-5 py-2.5 text-gray-700 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Create Series
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {series.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <Layers className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-600">No content series yet</p>
-          <p className="text-xs text-gray-400 mt-1">
+        <div className="text-center py-16 bg-white rounded-2xl border border-stone-200/60">
+          <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Layers className="w-8 h-8 text-stone-400" />
+          </div>
+          <p className="text-sm font-medium text-stone-600">No content series yet</p>
+          <p className="text-xs text-stone-400 mt-1">
             Create recurring content series for consistency
           </p>
-          <button
+          <Button
             onClick={() => setShowForm(true)}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
+            className="mt-4"
           >
             <Plus className="w-4 h-4" />
             Add Series
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -270,71 +271,78 @@ const SeriesPage = memo(function SeriesPage() {
             return (
               <div
                 key={s.id}
-                className={`bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow ${!s.is_active ? "opacity-60" : ""}`}
+                className={`bg-white rounded-2xl border border-stone-200/60 p-5 hover:shadow-sm transition-shadow ${!s.is_active ? "opacity-60" : ""}`}
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900">{s.name}</h3>
+                    <h3 className="text-sm font-semibold text-stone-900">{s.name}</h3>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${freqColors[s.frequency] || "bg-gray-100 text-gray-600"}`}>
+                      <Badge
+                        variant="secondary"
+                        className={freqColors[s.frequency] || "bg-stone-100 text-stone-600"}
+                      >
                         {s.frequency}
-                      </span>
+                      </Badge>
                       {pillar && (
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-md font-medium"
+                        <Badge
+                          variant="secondary"
+                          className="font-medium"
                           style={{
                             backgroundColor: `${pillar.color}15`,
                             color: pillar.color,
                           }}
                         >
                           {pillar.name}
-                        </span>
+                        </Badge>
                       )}
                       {s.preferred_day && (
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-stone-400">
                           {s.preferred_day}
                         </span>
                       )}
                       {s.preferred_time && (
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-stone-400">
                           at {s.preferred_time}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
                       onClick={() => handleToggleActive(s)}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700"
                       title={s.is_active ? "Deactivate" : "Activate"}
                     >
                       {s.is_active ? (
                         <ToggleRight className="w-4 h-4 text-green-600" />
                       ) : (
-                        <ToggleLeft className="w-4 h-4" />
+                        <ToggleLeft className="w-4 h-4 text-stone-400" />
                       )}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
                       onClick={() => handleDelete(s.id)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600"
+                      className="hover:bg-red-50 hover:text-red-600 text-stone-400"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 {s.description && (
-                  <p className="text-xs text-gray-500 mt-3 leading-relaxed">
+                  <p className="text-xs text-stone-500 mt-3 leading-relaxed">
                     {s.description}
                   </p>
                 )}
                 {/* Stats */}
-                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
-                  <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-stone-100">
+                  <span className="flex items-center gap-1.5 text-xs text-stone-500">
                     <FileText className="w-3.5 h-3.5" />
-                    <span className="font-semibold text-gray-700">{seriesStats[s.id]?.post_count || 0}</span> posts
+                    <span className="font-semibold text-stone-700">{seriesStats[s.id]?.post_count || 0}</span> posts
                   </span>
                   {seriesStats[s.id]?.last_posted && (
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <span className="flex items-center gap-1.5 text-xs text-stone-500">
                       <Clock className="w-3.5 h-3.5" />
                       Last: {new Date(seriesStats[s.id].last_posted!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>

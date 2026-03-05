@@ -38,10 +38,10 @@ export default function LinkedInPreview({
     expanded || !needsTruncation ? content : truncateAtWord(content, TRUNCATE_LIMIT);
 
   return (
-    <div className="max-w-[555px] bg-white border border-[#e0e0e0] rounded-lg">
+    <div className="max-w-[555px] bg-white border border-stone-200 rounded-2xl">
       {/* Header */}
       <div className="flex items-start gap-3 p-4 pb-0">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+        <div className="w-12 h-12 rounded-full bg-stone-700 flex items-center justify-center text-white text-sm font-semibold shrink-0">
           {authorInitials || authorName.substring(0, 2).toUpperCase()}
         </div>
         <div className="min-w-0">
@@ -49,11 +49,11 @@ export default function LinkedInPreview({
             {authorName}
           </p>
           {authorHeadline && (
-            <p className="text-[12px] text-gray-500 leading-tight mt-0.5 truncate">
+            <p className="text-[12px] text-stone-500 leading-tight mt-0.5 truncate">
               {authorHeadline}
             </p>
           )}
-          <p className="text-[12px] text-gray-500 leading-tight mt-0.5 flex items-center gap-1">
+          <p className="text-[12px] text-stone-500 leading-tight mt-0.5 flex items-center gap-1">
             {timestamp} <Globe className="w-3 h-3" />
           </p>
         </div>
@@ -65,10 +65,10 @@ export default function LinkedInPreview({
           {displayContent}
           {needsTruncation && !expanded && (
             <>
-              <span className="text-gray-500">...</span>
+              <span className="text-stone-500">...</span>
               <button
                 onClick={() => setExpanded(true)}
-                className="text-gray-500 text-sm ml-0.5 hover:underline"
+                className="text-stone-500 text-sm ml-0.5 hover:underline"
               >
                 more
               </button>
@@ -78,7 +78,7 @@ export default function LinkedInPreview({
       </div>
 
       {/* Separator */}
-      <div className="border-t border-[#e0e0e0] mx-4" />
+      <div className="border-t border-stone-200 mx-4" />
 
       {/* Action bar */}
       <div className="flex justify-between px-4">
@@ -90,7 +90,7 @@ export default function LinkedInPreview({
         ].map(({ icon: Icon, label }) => (
           <button
             key={label}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#666] hover:bg-[#f0f0f0] rounded-sm py-3 px-3 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#666] hover:bg-stone-100 rounded-lg py-3 px-3 transition-colors"
           >
             <Icon className="w-4 h-4" />
             {label}

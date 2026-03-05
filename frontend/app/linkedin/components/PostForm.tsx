@@ -2,6 +2,9 @@
 
 import { memo, useState } from "react";
 import { X, FileText, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { Pillar } from "@/types/linkedin";
 
 interface PostFormProps {
@@ -14,6 +17,9 @@ interface PostFormProps {
 const POST_TYPES = ["text", "carousel", "personal image", "social proof image", "poll", "video", "article"];
 const CTA_TYPES = ["none", "question", "link", "engagement-bait", "advice"];
 const HOOK_STYLES = ["", "Question", "Contrarian", "Story", "Stat", "Cliffhanger", "List", "Statement"];
+
+const selectClass =
+  "w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-400 focus:border-transparent transition-colors";
 
 const PostForm = memo(function PostForm({
   pillars,
@@ -113,32 +119,31 @@ const PostForm = memo(function PostForm({
     }
   };
 
-  const inputClass =
-    "w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors";
-
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-xl border border-gray-200 p-6 space-y-5"
+      className="bg-white rounded-2xl border border-stone-200/60 p-6 space-y-5"
     >
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-indigo-600" />
+        <h3 className="text-lg font-semibold text-stone-900 tracking-tight flex items-center gap-2">
+          <FileText className="w-5 h-5 text-stone-400" />
           {initial ? "Edit Post" : "Add Post"}
         </h3>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onCancel}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          className="h-8 w-8 rounded-xl text-stone-400 hover:text-stone-700"
           aria-label="Close form"
         >
-          <X className="w-5 h-5 text-gray-400" />
-        </button>
+          <X className="w-5 h-5" />
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-stone-600 mb-1">
             Author
           </label>
           <select
@@ -153,13 +158,13 @@ const PostForm = memo(function PostForm({
                 setForm({ ...form, author: authorName || "other" });
               }
             }}
-            className={inputClass}
+            className={selectClass}
           >
             <option value="me">Me</option>
             <option value="other">Other</option>
           </select>
           {authorMode === "other" && (
-            <input
+            <Input
               type="text"
               placeholder="Person's name"
               value={authorName}
@@ -167,19 +172,19 @@ const PostForm = memo(function PostForm({
                 setAuthorName(e.target.value);
                 setForm({ ...form, author: e.target.value || "other" });
               }}
-              className={`${inputClass} mt-2`}
+              className="mt-2 rounded-xl border-stone-200"
             />
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-stone-600 mb-1">
             Post Type
           </label>
           <select
             value={form.post_type}
             onChange={(e) => setForm({ ...form, post_type: e.target.value })}
-            className={inputClass}
+            className={selectClass}
           >
             {POST_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -191,26 +196,26 @@ const PostForm = memo(function PostForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-stone-600 mb-1">
           Content
         </label>
-        <textarea
+        <Textarea
           value={form.content}
           onChange={(e) => setForm({ ...form, content: e.target.value })}
           rows={6}
-          className={inputClass}
+          className="rounded-xl border-stone-200 focus-visible:ring-stone-400"
           placeholder="Paste the LinkedIn post content here..."
           required
         />
         <div className="flex items-center justify-between mt-1.5">
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-stone-400">
             {form.content.split(/\s+/).filter(Boolean).length} words
           </p>
           <button
             type="button"
             onClick={handleAutoFill}
             disabled={autoFilling || !form.content.trim()}
-            className="flex items-center gap-1.5 text-xs text-indigo-600 font-medium hover:text-indigo-800 disabled:opacity-40 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-stone-600 font-medium hover:text-stone-900 disabled:opacity-40 transition-colors"
           >
             <Zap className="w-3 h-3" />
             {autoFilling ? "Filling..." : "Auto-fill fields"}
@@ -220,37 +225,37 @@ const PostForm = memo(function PostForm({
 
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-stone-600">
             Hook Line
           </label>
           <button
             type="button"
             onClick={handleExtractHook}
             disabled={extracting || !form.content.trim()}
-            className="flex items-center gap-1 text-xs text-amber-700 font-medium hover:text-amber-900 disabled:opacity-40 transition-colors"
+            className="flex items-center gap-1 text-xs text-stone-600 font-medium hover:text-stone-900 disabled:opacity-40 transition-colors"
           >
             <Zap className="w-3 h-3" />
             {extracting ? "Extracting..." : "Extract"}
           </button>
         </div>
-        <input
+        <Input
           type="text"
           value={form.hook_line}
           onChange={(e) => setForm({ ...form, hook_line: e.target.value })}
-          className={inputClass}
+          className="rounded-xl border-stone-200"
           placeholder="First line of the post"
         />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-stone-600 mb-1">
             Hook Style
           </label>
           <select
             value={form.hook_style}
             onChange={(e) => setForm({ ...form, hook_style: e.target.value })}
-            className={inputClass}
+            className={selectClass}
           >
             {HOOK_STYLES.map((s) => (
               <option key={s} value={s}>
@@ -261,13 +266,13 @@ const PostForm = memo(function PostForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-stone-600 mb-1">
             CTA Type
           </label>
           <select
             value={form.cta_type}
             onChange={(e) => setForm({ ...form, cta_type: e.target.value })}
-            className={inputClass}
+            className={selectClass}
           >
             {CTA_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -280,7 +285,7 @@ const PostForm = memo(function PostForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-stone-600 mb-1">
             Pillar
           </label>
           <select
@@ -291,7 +296,7 @@ const PostForm = memo(function PostForm({
                 pillar_id: e.target.value ? Number(e.target.value) : "",
               })
             }
-            className={inputClass}
+            className={selectClass}
           >
             <option value="">No pillar</option>
             {pillars.map((p) => (
@@ -303,59 +308,60 @@ const PostForm = memo(function PostForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-stone-600 mb-1">
             Posted At
           </label>
-          <input
+          <Input
             type="datetime-local"
             value={form.posted_at}
             onChange={(e) => setForm({ ...form, posted_at: e.target.value })}
-            className={inputClass}
+            className="rounded-xl border-stone-200"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-stone-600 mb-1">
           Post URL
         </label>
-        <input
+        <Input
           type="url"
           value={form.post_url}
           onChange={(e) => setForm({ ...form, post_url: e.target.value })}
-          className={inputClass}
+          className="rounded-xl border-stone-200"
           placeholder="https://linkedin.com/posts/..."
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-stone-600 mb-1">
           Topic Tags (comma separated)
         </label>
-        <input
+        <Input
           type="text"
           value={form.topic_tags}
           onChange={(e) => setForm({ ...form, topic_tags: e.target.value })}
-          className={inputClass}
+          className="rounded-xl border-stone-200"
           placeholder="career, leadership, tech"
         />
       </div>
 
       <div className="flex gap-3 pt-2">
-        <button
+        <Button
           type="submit"
           disabled={saving || !form.content.trim()}
-          className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+          className="rounded-xl active:scale-[0.98] transition-all"
         >
           {saving ? "Saving..." : initial ? "Update Post" : "Add Post"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           onClick={onCancel}
-          className="px-5 py-2.5 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+          className="rounded-xl border-stone-200"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

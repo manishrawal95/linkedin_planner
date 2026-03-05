@@ -2,6 +2,16 @@
 
 import { memo, useEffect, useState, useCallback } from "react";
 import { Plus, Trash2, Anchor, Copy, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Hook } from "@/types/linkedin";
 
 const HOOK_STYLES = [
@@ -18,7 +28,7 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
   const [hooks, setHooks] = useState<Hook[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [filterStyle, setFilterStyle] = useState("");
-  const [form, setForm] = useState({ text: "", style: "statement" });
+  const [form, setForm] = useState({ text: "", style: "Statement" });
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +55,7 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
       body: JSON.stringify(form),
     });
     setShowForm(false);
-    setForm({ text: "", style: "statement" });
+    setForm({ text: "", style: "Statement" });
     fetchHooks();
   };
 
@@ -64,55 +74,50 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
   };
 
   const styleColors: Record<string, string> = {
-    question: "bg-blue-100 text-blue-700 border-blue-200",
-    contrarian: "bg-red-100 text-red-700 border-red-200",
-    story: "bg-purple-100 text-purple-700 border-purple-200",
-    stat: "bg-green-100 text-green-700 border-green-200",
-    cliffhanger: "bg-amber-100 text-amber-700 border-amber-200",
-    list: "bg-cyan-100 text-cyan-700 border-cyan-200",
-    statement: "bg-gray-100 text-gray-700 border-gray-200",
+    question: "bg-blue-50 text-blue-700 border-blue-200/60",
+    contrarian: "bg-red-50 text-red-700 border-red-200/60",
+    story: "bg-purple-50 text-purple-700 border-purple-200/60",
+    stat: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+    cliffhanger: "bg-amber-50 text-amber-700 border-amber-200/60",
+    list: "bg-cyan-50 text-cyan-700 border-cyan-200/60",
+    statement: "bg-stone-100 text-stone-700 border-stone-200/60",
   };
-
-  const inputClass =
-    "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-600" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Anchor className="w-6 h-6 text-indigo-600" />
-            Hook Library
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-stone-900 tracking-tight">Hook Library</h1>
+          <p className="text-sm text-stone-500 mt-1">
             {hooks.length} hook{hooks.length !== 1 ? "s" : ""} saved
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+          className="bg-stone-900 text-white hover:bg-stone-800 rounded-xl"
         >
           <Plus className="w-4 h-4" />
           Add Hook
-        </button>
+        </Button>
       </div>
 
       {/* Filter by style */}
-      <div className="flex gap-2 flex-wrap bg-white rounded-xl border border-gray-200 px-4 py-3">
+      <div className="flex gap-2 flex-wrap bg-white rounded-2xl border border-stone-200/60 px-4 py-3">
         <button
           onClick={() => setFilterStyle("")}
-          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+          className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-all ${
             !filterStyle
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              ? "bg-stone-900 text-white"
+              : "text-stone-600 hover:bg-stone-100"
           }`}
         >
           All
@@ -121,10 +126,10 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
           <button
             key={s}
             onClick={() => setFilterStyle(s)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg capitalize transition-all ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-xl capitalize transition-all ${
               filterStyle === s
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                ? "bg-stone-900 text-white"
+                : "text-stone-600 hover:bg-stone-100"
             }`}
           >
             {s}
@@ -132,55 +137,61 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
         ))}
       </div>
 
+      {/* Add hook form */}
       {showForm && (
         <form
           onSubmit={handleAdd}
-          className="bg-white rounded-xl border border-gray-200 p-6 space-y-4"
+          className="bg-white rounded-2xl border border-stone-200/60 p-6 space-y-4"
         >
-          <h3 className="text-lg font-semibold text-gray-900">New Hook</h3>
+          <h3 className="text-lg font-semibold text-stone-900">New Hook</h3>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-stone-700 mb-1.5">
               Hook Text
             </label>
-            <textarea
+            <Textarea
               value={form.text}
               onChange={(e) => setForm({ ...form, text: e.target.value })}
               rows={2}
-              className={inputClass}
               placeholder="The opening line that grabs attention..."
+              className="rounded-xl border-stone-200/60 bg-stone-50 focus:bg-white text-sm"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-stone-700 mb-1.5">
               Style
             </label>
-            <select
+            <Select
               value={form.style}
-              onChange={(e) => setForm({ ...form, style: e.target.value })}
-              className={inputClass}
+              onValueChange={(value) => setForm({ ...form, style: value })}
             >
-              {HOOK_STYLES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full rounded-xl border-stone-200/60 bg-stone-50">
+                <SelectValue placeholder="Select a style" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                {HOOK_STYLES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-3">
-            <button
+            <Button
               type="submit"
-              className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+              className="bg-stone-900 text-white hover:bg-stone-800 rounded-xl"
             >
               Add Hook
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setShowForm(false)}
-              className="px-5 py-2.5 text-gray-700 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              className="rounded-xl border-stone-200/60 text-stone-700 hover:bg-stone-50"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -188,52 +199,57 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
       {/* Hook list */}
       <div className="space-y-3">
         {hooks.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-            <Anchor className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-600">No hooks saved yet</p>
-            <p className="text-xs text-gray-400 mt-1">
+          <div className="text-center py-16 bg-white rounded-2xl border border-stone-200/60">
+            <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Anchor className="w-8 h-8 text-stone-400" />
+            </div>
+            <p className="text-sm font-medium text-stone-600">No hooks saved yet</p>
+            <p className="text-xs text-stone-400 mt-1">
               Add hooks manually or extract them from your best posts
             </p>
-            <button
+            <Button
               onClick={() => setShowForm(true)}
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
+              className="mt-4 bg-stone-900 text-white hover:bg-stone-800 rounded-xl"
             >
               <Plus className="w-4 h-4" />
               Add Hook
-            </button>
+            </Button>
           </div>
         ) : (
           hooks.map((hook) => (
             <div
               key={hook.id}
-              className="bg-white rounded-xl border border-gray-200 p-5 flex justify-between items-start gap-4 hover:shadow-sm transition-shadow"
+              className="bg-white rounded-2xl border border-stone-200/60 p-5 flex justify-between items-start gap-4 hover:shadow-sm transition-shadow"
             >
               <div className="flex-1">
-                <p className="text-sm text-gray-900 font-medium leading-relaxed">
+                <p className="text-sm text-stone-900 font-medium leading-relaxed">
                   &ldquo;{hook.text}&rdquo;
                 </p>
                 <div className="flex items-center gap-2 mt-3">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-md font-medium capitalize border ${styleColors[hook.style] || "bg-gray-100 text-gray-600"}`}
+                  <Badge
+                    variant="outline"
+                    className={`capitalize rounded-lg ${styleColors[hook.style] ?? "bg-stone-100 text-stone-600 border-stone-200/60"}`}
                   >
                     {hook.style}
-                  </span>
+                  </Badge>
                   {hook.times_used > 0 && (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-stone-400">
                       Used {hook.times_used}x
                     </span>
                   )}
                   {hook.avg_engagement_score != null && (
-                    <span className="text-xs text-indigo-600 font-semibold">
+                    <span className="text-xs text-stone-700 font-semibold">
                       {(hook.avg_engagement_score * 100).toFixed(1)}% avg eng
                     </span>
                   )}
                 </div>
               </div>
               <div className="flex gap-1">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => handleCopyHook(hook)}
-                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                  className="rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100"
                   title="Copy hook to clipboard"
                 >
                   {copiedId === hook.id ? (
@@ -241,13 +257,15 @@ const HooksLibraryPage = memo(function HooksLibraryPage() {
                   ) : (
                     <Copy className="w-4 h-4" />
                   )}
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => handleDelete(hook.id)}
-                  className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                  className="rounded-xl text-stone-400 hover:text-red-600 hover:bg-red-50"
                 >
                   <Trash2 className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             </div>
           ))

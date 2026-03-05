@@ -19,7 +19,7 @@ Your Posts → Metrics → AI Analysis → Learnings (with confidence) → Playb
 
 | Layer | Tech |
 |-------|------|
-| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Recharts |
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Recharts |
 | Backend | FastAPI, SQLite (WAL mode), Pydantic |
 | AI | Google GenAI (Gemini) or Anthropic (Claude) — configurable |
 
@@ -131,7 +131,11 @@ Set and track performance targets (e.g., "reach 50K impressions by March").
 ├── frontend/
 │   ├── types/
 │   │   └── linkedin.ts          # Shared TypeScript interfaces (31 types)
-│   ├── app/globals.css          # Design tokens + animations
+│   ├── components/ui/           # shadcn/ui components (Button, Dialog, Badge, etc.)
+│   ├── lib/
+│   │   ├── utils.ts             # cn() helper (clsx + tailwind-merge)
+│   │   └── chart-theme.ts       # Shared Recharts theme (warm stone palette)
+│   ├── app/globals.css          # Design tokens (warm stone palette) + animations
 │   ├── app/linkedin/
 │   │   ├── layout.tsx           # App shell with responsive sidebar
 │   │   ├── page.tsx             # Dashboard

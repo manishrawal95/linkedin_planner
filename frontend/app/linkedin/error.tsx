@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function LinkedInError({
   error,
@@ -28,27 +29,24 @@ export default function LinkedInError({
           <AlertTriangle className="h-8 w-8 text-red-500" />
         </div>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-stone-900 mb-2 tracking-tight">
           Something went wrong
         </h2>
-        <p className="text-sm text-gray-500 leading-relaxed mb-6 max-w-sm mx-auto">
+        <p className="text-sm text-stone-500 leading-relaxed mb-6 max-w-sm mx-auto">
           An unexpected error occurred while loading this page. This has been
           logged and we will look into it.
         </p>
 
         {error.digest && (
-          <p className="text-xs text-gray-400 mb-6 font-mono">
+          <p className="text-xs text-stone-400 mb-6 font-mono">
             Reference: {error.digest}
           </p>
         )}
 
-        <button
-          onClick={reset}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-        >
+        <Button onClick={reset} className="gap-2 rounded-xl">
           <RotateCcw className="h-4 w-4" />
           Try again
-        </button>
+        </Button>
       </div>
     </div>
   );

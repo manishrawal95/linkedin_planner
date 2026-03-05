@@ -13,11 +13,20 @@ import {
   Send,
   ArrowRight,
   Linkedin,
-  ChevronDown,
   X,
   ImagePlus,
 } from "lucide-react";
 import LinkedInPreview from "./LinkedInPreview";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Draft } from "@/types/linkedin";
 
 interface DraftEditorProps {
@@ -57,20 +66,16 @@ const DraftEditor = memo(function DraftEditor({
   const charPct = Math.min(100, (charCount / LINKEDIN_CHAR_LIMIT) * 100);
   const isOverLimit = charCount > LINKEDIN_CHAR_LIMIT;
 
-  // LinkedIn auth state
   const [linkedInConnected, setLinkedInConnected] = useState(false);
   const [posting, setPosting] = useState(false);
   const [postSuccess, setPostSuccess] = useState(false);
   const [postError, setPostError] = useState<string | null>(null);
 
-  // Image state
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageUrn, setImageUrn] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Improve dropdown state
-  const [showImproveMenu, setShowImproveMenu] = useState(false);
   const [improving, setImproving] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
 
@@ -108,7 +113,6 @@ const DraftEditor = memo(function DraftEditor({
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Revoke any existing object URL to avoid memory leaks
     setImagePreview((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
@@ -169,7 +173,6 @@ const DraftEditor = memo(function DraftEditor({
       }
       setPostSuccess(true);
       setTimeout(() => setPostSuccess(false), 6000);
-      // Update local draft status
       await onUpdate(draft.id, { status: "posted" });
     } catch (err) {
       setPostError(err instanceof Error ? err.message : "Failed to post to LinkedIn");
@@ -179,7 +182,6 @@ const DraftEditor = memo(function DraftEditor({
   };
 
   const handleImprove = async (action: ImproveAction) => {
-    setShowImproveMenu(false);
     setImproving(true);
     setSuggestion(null);
     try {
@@ -209,45 +211,46 @@ const DraftEditor = memo(function DraftEditor({
   };
 
   const statusColors: Record<string, string> = {
-    draft: "bg-amber-100 text-amber-700 border-amber-200",
-    revised: "bg-blue-100 text-blue-700 border-blue-200",
-    posted: "bg-green-100 text-green-700 border-green-200",
-    discarded: "bg-gray-100 text-gray-500 border-gray-200",
+    draft: "bg-amber-50 text-amber-700 border-amber-200/60",
+    revised: "bg-blue-50 text-blue-700 border-blue-200/60",
+    posted: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+    discarded: "bg-stone-100 text-stone-500 border-stone-200/60",
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-sm transition-shadow">
+    <div className="bg-white rounded-2xl border border-stone-200/60 overflow-hidden hover:shadow-[var(--shadow-card-hover)] transition-all duration-200">
       <div className="p-5">
         <div className="flex flex-wrap justify-between items-start gap-2 mb-3">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <FileEdit className="w-4 h-4 text-gray-400 shrink-0" />
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
+              <FileEdit className="w-4 h-4 text-stone-400 shrink-0" />
               <span className="truncate">{draft.topic}</span>
             </h3>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <span
-                className={`text-xs px-2 py-0.5 rounded-md font-medium border ${statusColors[draft.status] || "bg-gray-100 text-gray-600"}`}
+              <Badge
+                variant="secondary"
+                className={`${statusColors[draft.status] || "bg-stone-100 text-stone-600"} hover:bg-transparent`}
               >
                 {draft.status}
-              </span>
+              </Badge>
               {draft.hook_variant && (
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-stone-400">
                   Hook: {draft.hook_variant}
                 </span>
               )}
               {draft.ai_model && (
-                <span className="text-xs text-gray-400 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-purple-400" />
+                <span className="text-xs text-stone-400 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-stone-400" />
                   {draft.ai_model}
                 </span>
               )}
-              <span className="text-xs text-gray-300">
+              <span className="text-xs text-stone-300">
                 {new Date(draft.created_at).toLocaleDateString()}
               </span>
               {draft.status === "draft" && (
                 <button
                   onClick={() => onUpdate(draft.id, { status: "revised" })}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-0.5 ml-2"
+                  className="text-xs text-stone-600 hover:text-stone-900 font-medium flex items-center gap-0.5 ml-2 transition-colors"
                 >
                   <ArrowRight className="w-3 h-3" />
                   Mark Revised
@@ -256,7 +259,7 @@ const DraftEditor = memo(function DraftEditor({
               {(draft.status === "draft" || draft.status === "revised") && onPublish && (
                 <button
                   onClick={() => onPublish(draft)}
-                  className="text-xs text-green-600 hover:text-green-800 font-medium flex items-center gap-0.5 ml-2"
+                  className="text-xs text-emerald-600 hover:text-emerald-800 font-medium flex items-center gap-0.5 ml-2 transition-colors"
                 >
                   <Send className="w-3 h-3" />
                   Mark Posted
@@ -267,77 +270,71 @@ const DraftEditor = memo(function DraftEditor({
           <div className="flex gap-1 flex-wrap shrink-0">
             {/* Improve dropdown */}
             {draft.status !== "posted" && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowImproveMenu(!showImproveMenu)}
-                  disabled={improving}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 transition-colors border border-purple-200"
-                  title="AI improve"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {improving ? "..." : "Improve"}
-                  <ChevronDown className="w-3 h-3" />
-                </button>
-                {showImproveMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
-                    {IMPROVE_ACTIONS.map((a) => (
-                      <button
-                        key={a.key}
-                        onClick={() => handleImprove(a.key)}
-                        className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        {a.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={improving}
+                    className="gap-1 rounded-xl border-stone-200 text-stone-600 hover:bg-stone-50 h-8 text-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {improving ? "..." : "Improve"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-xl">
+                  {IMPROVE_ACTIONS.map((a) => (
+                    <DropdownMenuItem
+                      key={a.key}
+                      onClick={() => handleImprove(a.key)}
+                      className="text-xs rounded-lg"
+                    >
+                      {a.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowPreview(!showPreview)}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              className="h-8 w-8 rounded-xl text-stone-400 hover:text-stone-700"
               title={showPreview ? "Hide preview" : "LinkedIn preview"}
             >
-              {showPreview ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
-            </button>
-            <button
+              {showPreview ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleCopy}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+              className="h-8 w-8 rounded-xl text-stone-400 hover:text-stone-700"
               title="Copy to clipboard"
             >
-              {copied ? (
-                <Check className="w-4 h-4 text-green-600" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </button>
+              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+            </Button>
             {onSchedule && draft.status !== "posted" && draft.status !== "discarded" && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => onSchedule(draft)}
-                className="p-2 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
+                className="h-8 w-8 rounded-xl text-stone-400 hover:text-stone-700"
                 title="Schedule to calendar"
               >
                 <CalendarPlus className="w-4 h-4" />
-              </button>
+              </Button>
             )}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => onDelete(draft.id)}
-              className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+              className="h-8 w-8 rounded-xl text-stone-400 hover:text-red-600 hover:bg-red-50"
               title="Delete draft"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
-
-        {/* Close improve menu on outside click */}
-        {showImproveMenu && (
-          <div className="fixed inset-0 z-[5]" onClick={() => setShowImproveMenu(false)} />
-        )}
 
         {showPreview ? (
           <LinkedInPreview
@@ -348,64 +345,63 @@ const DraftEditor = memo(function DraftEditor({
             timestamp="Just now"
           />
         ) : (
-          <textarea
+          <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={8}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50 focus:bg-white focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500 outline-none transition-colors leading-relaxed"
+            className="rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus-visible:ring-stone-400 leading-relaxed"
           />
         )}
 
         {/* AI Suggestion panel */}
         {suggestion && (
-          <div className="mt-3 border border-purple-200 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 bg-purple-50 border-b border-purple-200">
-              <span className="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
+          <div className="mt-3 border border-stone-200 rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 bg-stone-50 border-b border-stone-200">
+              <span className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
                 AI Suggestion
               </span>
-              <button onClick={() => setSuggestion(null)} className="p-0.5 hover:bg-purple-100 rounded">
-                <X className="w-3.5 h-3.5 text-purple-500" />
-              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSuggestion(null)}
+                className="h-6 w-6 rounded-lg text-stone-400 hover:text-stone-700"
+              >
+                <X className="w-3.5 h-3.5" />
+              </Button>
             </div>
             <div className="p-3 bg-white">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{suggestion}</p>
+              <p className="text-sm text-stone-700 whitespace-pre-wrap leading-relaxed">{suggestion}</p>
               <div className="flex gap-2 mt-3">
-                <button
-                  onClick={handleAcceptSuggestion}
-                  className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 transition-colors"
-                >
+                <Button size="sm" onClick={handleAcceptSuggestion} className="rounded-xl text-xs h-7">
                   Accept
-                </button>
-                <button
-                  onClick={() => setSuggestion(null)}
-                  className="px-3 py-1.5 text-gray-600 text-xs font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-                >
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setSuggestion(null)} className="rounded-xl text-xs h-7 border-stone-200">
                   Dismiss
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Image picker (only when LinkedIn connected and not yet posted) */}
+        {/* Image picker */}
         {draft.status !== "posted" && linkedInConnected && (
           <div className="mt-3">
             {imagePreview ? (
-              <div className="flex items-center gap-3 p-2 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="flex items-center gap-3 p-2 bg-stone-50 border border-stone-200/60 rounded-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imagePreview} alt="Post image" className="w-14 h-14 object-cover rounded-md" />
+                <img src={imagePreview} alt="Post image" className="w-14 h-14 object-cover rounded-lg" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-700 truncate">{imageFile?.name}</p>
-                  {uploadingImage && <p className="text-[10px] text-indigo-500 mt-0.5">Uploading to LinkedIn...</p>}
-                  {imageUrn && !uploadingImage && <p className="text-[10px] text-green-600 mt-0.5">Ready to post with image</p>}
+                  <p className="text-xs font-medium text-stone-700 truncate">{imageFile?.name}</p>
+                  {uploadingImage && <p className="text-[10px] text-stone-500 mt-0.5">Uploading to LinkedIn...</p>}
+                  {imageUrn && !uploadingImage && <p className="text-[10px] text-emerald-600 mt-0.5">Ready to post with image</p>}
                 </div>
-                <button onClick={handleRemoveImage} className="p-1 hover:bg-gray-200 rounded text-gray-400 hover:text-gray-600">
+                <Button variant="ghost" size="icon" onClick={handleRemoveImage} className="h-7 w-7 rounded-lg text-stone-400 hover:text-stone-700">
                   <X className="w-3.5 h-3.5" />
-                </button>
+                </Button>
               </div>
             ) : (
-              <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+              <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-stone-500 border border-stone-200 rounded-xl hover:bg-stone-50 cursor-pointer transition-colors">
                 <ImagePlus className="w-3.5 h-3.5" />
                 Add image
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
@@ -416,12 +412,12 @@ const DraftEditor = memo(function DraftEditor({
 
         {/* Post to LinkedIn feedback */}
         {postSuccess && (
-          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-700 font-medium">
+          <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200/60 rounded-xl text-xs text-emerald-700 font-medium">
             Posted to LinkedIn
           </div>
         )}
         {postError && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+          <div className="mt-3 p-3 bg-red-50 border border-red-200/60 rounded-xl text-xs text-red-700">
             {postError}
           </div>
         )}
@@ -429,29 +425,19 @@ const DraftEditor = memo(function DraftEditor({
         {/* Character counter & stats */}
         <div className="flex justify-between items-center mt-2 flex-wrap gap-2">
           <div className="flex items-center gap-4">
-            <span className="text-xs text-gray-400">
-              {wordCount} words
-            </span>
+            <span className="text-xs text-stone-400">{wordCount} words</span>
             <div className="flex items-center gap-2">
-              <div className="w-24 bg-gray-100 rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all ${
-                    isOverLimit
-                      ? "bg-red-500"
-                      : charPct > 80
-                        ? "bg-amber-500"
-                        : "bg-indigo-500"
-                  }`}
-                  style={{ width: `${Math.min(100, charPct)}%` }}
-                />
-              </div>
+              <Progress
+                value={charPct}
+                className="w-24 h-1.5 bg-stone-100"
+              />
               <span
                 className={`text-xs font-medium ${
                   isOverLimit
                     ? "text-red-600"
                     : charPct > 80
                       ? "text-amber-600"
-                      : "text-gray-400"
+                      : "text-stone-400"
                 }`}
               >
                 {charCount}/{LINKEDIN_CHAR_LIMIT}
@@ -459,21 +445,21 @@ const DraftEditor = memo(function DraftEditor({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Post to LinkedIn button */}
             {draft.status !== "posted" && (
               linkedInConnected ? (
-                <button
+                <Button
+                  size="sm"
                   onClick={handlePostToLinkedIn}
                   disabled={posting || isOverLimit || uploadingImage}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="gap-1.5 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-xs h-7"
                 >
                   <Linkedin className="w-3.5 h-3.5" />
                   {posting ? "Posting..." : uploadingImage ? "Uploading..." : "Post to LinkedIn"}
-                </button>
+                </Button>
               ) : (
                 <a
                   href="/api/linkedin/auth/start"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-blue-700 text-xs font-medium rounded-lg border border-blue-300 hover:bg-blue-50 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[#0a66c2] text-xs font-medium rounded-xl border border-[#0a66c2]/30 hover:bg-blue-50 transition-colors"
                 >
                   <Linkedin className="w-3.5 h-3.5" />
                   Connect LinkedIn
@@ -481,13 +467,14 @@ const DraftEditor = memo(function DraftEditor({
               )
             )}
             {hasChanges && (
-              <button
+              <Button
+                size="sm"
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-sm"
+                className="rounded-xl text-xs h-7 active:scale-[0.98] transition-all"
               >
                 {saving ? "Saving..." : "Save Changes"}
-              </button>
+              </Button>
             )}
           </div>
         </div>

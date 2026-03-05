@@ -10,16 +10,29 @@ import {
   CheckCircle,
   FileText,
   X,
+  CalendarDays,
 } from "lucide-react";
 import type { CalendarEntry, Pillar, Draft, Series } from "@/types/linkedin";
 import { useToast } from "../components/Toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const STATUS_COLORS: Record<string, string> = {
-  planned: "bg-blue-100 border-blue-200 text-blue-700",
-  ready: "bg-green-100 border-green-200 text-green-700",
-  posted: "bg-gray-100 border-gray-200 text-gray-500",
-  skipped: "bg-red-100 border-red-200 text-red-400",
+  planned: "bg-blue-50 border-blue-200/60 text-blue-700",
+  ready: "bg-emerald-50 border-emerald-200/60 text-emerald-700",
+  posted: "bg-stone-100 border-stone-200/60 text-stone-500",
+  skipped: "bg-red-50 border-red-200/60 text-red-400",
 };
 
 interface AISuggestion {
@@ -31,6 +44,12 @@ interface AISuggestion {
   raw?: string;
   [key: string]: unknown;
 }
+
+const selectClass =
+  "w-full rounded-xl border border-stone-200 bg-white text-stone-700 text-sm h-9 px-3 outline-none focus:ring-2 focus:ring-stone-400/30 focus:border-stone-300 transition-colors";
+
+const selectCompactClass =
+  "w-full rounded-lg border border-stone-200 bg-white text-stone-700 text-sm px-1 py-0.5 outline-none focus:ring-2 focus:ring-stone-400/30 focus:border-stone-300 transition-colors";
 
 const CalendarPage = memo(function CalendarPage() {
   const toast = useToast();
@@ -221,78 +240,92 @@ const CalendarPage = memo(function CalendarPage() {
       ? today.getDate()
       : null;
 
-  const inputClass =
-    "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors";
-
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Content Calendar</h1>
-        <button
+        <h1 className="text-2xl font-semibold text-stone-900 tracking-tight">
+          Content Calendar
+        </h1>
+        <Button
           onClick={handleGetSuggestions}
           disabled={loadingSuggestions}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+          className="bg-stone-900 text-white hover:bg-stone-800"
         >
           <Sparkles className="w-4 h-4" />
           {loadingSuggestions ? "Loading..." : "AI Suggestions"}
-        </button>
+        </Button>
       </div>
 
       {/* Suggestions error */}
       {suggestionsError && (
-        <div className="bg-red-50 rounded-xl border border-red-200 p-4 flex items-center justify-between">
+        <div className="bg-red-50 rounded-2xl border border-red-200/60 p-4 flex items-center justify-between">
           <p className="text-sm text-red-700">{suggestionsError}</p>
-          <button onClick={() => setSuggestionsError(null)} className="text-xs text-red-500 hover:underline ml-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSuggestionsError(null)}
+            className="text-xs text-red-500 hover:text-red-700 ml-4"
+          >
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Suggestions */}
       {suggestions && (
-        <div className="bg-indigo-50 rounded-xl border border-indigo-200 p-4">
+        <div className="bg-stone-50 rounded-2xl border border-stone-200/60 p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-indigo-900">
+            <h3 className="text-sm font-semibold text-stone-900">
               AI Content Suggestions for Next Week
             </h3>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setSuggestions(null)}
-              className="p-1 hover:bg-indigo-100 rounded-lg transition-colors"
+              className="hover:bg-stone-200/60"
               aria-label="Dismiss suggestions"
             >
-              <X className="w-4 h-4 text-indigo-500" />
-            </button>
+              <X className="w-4 h-4 text-stone-500" />
+            </Button>
           </div>
           {suggestions.length === 0 ? (
-            <p className="text-sm text-indigo-600">No suggestions available.</p>
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mb-3">
+                <CalendarDays className="w-7 h-7 text-stone-400" />
+              </div>
+              <p className="text-sm text-stone-500">No suggestions available.</p>
+            </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {suggestions.map((s, i) => (
                 <div
                   key={i}
-                  className="bg-white rounded-lg border border-indigo-200 p-3 space-y-1.5"
+                  className="bg-white rounded-xl border border-stone-200/60 p-3 space-y-1.5"
                 >
                   {s.raw ? (
-                    <p className="text-xs text-indigo-800 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-xs text-stone-700 whitespace-pre-wrap leading-relaxed">
                       {s.raw}
                     </p>
                   ) : (
                     <>
                       {(s.date) && (
-                        <p className="text-xs font-semibold text-indigo-700">{s.date}</p>
+                        <p className="text-xs font-semibold text-stone-600">{s.date}</p>
                       )}
                       {(s.topic || s.title) && (
-                        <p className="text-sm font-medium text-gray-900 leading-snug">
+                        <p className="text-sm font-medium text-stone-900 leading-snug">
                           {s.topic ?? s.title}
                         </p>
                       )}
                       {s.pillar && (
-                        <span className="inline-block text-xs font-medium px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">
+                        <Badge
+                          variant="secondary"
+                          className="bg-stone-100 text-stone-700 border-none"
+                        >
                           {s.pillar}
-                        </span>
+                        </Badge>
                       )}
                       {s.notes && (
-                        <p className="text-xs text-gray-500 leading-relaxed">{s.notes}</p>
+                        <p className="text-xs text-stone-500 leading-relaxed">{s.notes}</p>
                       )}
                     </>
                   )}
@@ -305,34 +338,38 @@ const CalendarPage = memo(function CalendarPage() {
 
       {/* Month navigation */}
       <div className="flex items-center justify-center gap-4">
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={handlePrevMonth}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="hover:bg-stone-100"
         >
-          <ChevronLeft className="w-5 h-5 text-gray-600" />
-        </button>
-        <h2 className="text-lg font-semibold text-gray-900 min-w-[200px] text-center">
+          <ChevronLeft className="w-5 h-5 text-stone-600" />
+        </Button>
+        <h2 className="text-lg font-semibold text-stone-900 min-w-[200px] text-center">
           {currentDate.toLocaleString("default", {
             month: "long",
             year: "numeric",
           })}
         </h2>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={handleNextMonth}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="hover:bg-stone-100"
         >
-          <ChevronRight className="w-5 h-5 text-gray-600" />
-        </button>
+          <ChevronRight className="w-5 h-5 text-stone-600" />
+        </Button>
       </div>
 
       {/* Calendar grid */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-stone-200/60 overflow-hidden">
         {/* Day headers */}
-        <div className="grid grid-cols-7 border-b border-gray-200">
+        <div className="grid grid-cols-7 border-b border-stone-200/60">
           {DAYS.map((day) => (
             <div
               key={day}
-              className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase"
+              className="px-2 py-2 text-center text-xs font-medium text-stone-500 uppercase"
             >
               {day}
             </div>
@@ -346,7 +383,7 @@ const CalendarPage = memo(function CalendarPage() {
               return (
                 <div
                   key={`empty-${idx}`}
-                  className="min-h-[120px] border-b border-r border-gray-100 bg-gray-50"
+                  className="min-h-[120px] border-b border-r border-stone-100 bg-stone-50/50"
                 />
               );
             }
@@ -360,17 +397,17 @@ const CalendarPage = memo(function CalendarPage() {
             return (
               <div
                 key={day}
-                className={`min-h-[120px] border-b border-r border-gray-100 p-1.5 ${isToday ? "bg-indigo-50/50" : ""}`}
+                className={`min-h-[120px] border-b border-r border-stone-100 p-1.5 ${isToday ? "bg-stone-50/80" : ""}`}
               >
                 <div className="flex justify-between items-center mb-1">
                   <span
-                    className={`text-xs font-medium ${isToday ? "bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center" : "text-gray-500"}`}
+                    className={`text-xs font-medium ${isToday ? "bg-stone-900 text-white w-6 h-6 rounded-full flex items-center justify-center" : "text-stone-500"}`}
                   >
                     {day}
                   </span>
                   <button
                     onClick={() => setShowAdd(dateStr)}
-                    className="p-1 min-w-[28px] min-h-[28px] flex items-center justify-center rounded hover:bg-gray-100 text-gray-300 hover:text-gray-600"
+                    className="p-1 min-w-[28px] min-h-[28px] flex items-center justify-center rounded hover:bg-stone-100 text-stone-400 hover:text-stone-600"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
@@ -387,7 +424,7 @@ const CalendarPage = memo(function CalendarPage() {
                   return (
                     <div
                       key={entry.id}
-                      className={`group text-xs px-1.5 py-1 rounded border mb-0.5 ${STATUS_COLORS[entry.status] || ""}`}
+                      className={`group text-xs px-1.5 py-1 rounded-lg border mb-0.5 ${STATUS_COLORS[entry.status] || ""}`}
                     >
                       <div className="flex justify-between items-start">
                         <div className="min-w-0 flex-1">
@@ -405,7 +442,7 @@ const CalendarPage = memo(function CalendarPage() {
                             </span>
                           )}
                           {linkedDraft && (
-                            <div className="flex items-center gap-0.5 text-indigo-600">
+                            <div className="flex items-center gap-0.5 text-stone-600">
                               <FileText className="w-3 h-3" />
                               <span className="truncate">{linkedDraft.topic}</span>
                             </div>
@@ -429,10 +466,10 @@ const CalendarPage = memo(function CalendarPage() {
                                   });
                                 }
                               }}
-                              className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-green-100 rounded"
+                              className="p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-emerald-100 rounded"
                               title="Mark as posted"
                             >
-                              <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
                             </button>
                           )}
                           <button
@@ -447,7 +484,7 @@ const CalendarPage = memo(function CalendarPage() {
                       {entry.status === "planned" && (
                         <button
                           onClick={() => handleUpdateStatus(entry.id, "ready")}
-                          className="text-xs text-blue-600 hover:underline mt-0.5"
+                          className="text-xs text-stone-600 hover:text-stone-900 hover:underline mt-0.5"
                         >
                           Mark ready
                         </button>
@@ -460,9 +497,9 @@ const CalendarPage = memo(function CalendarPage() {
                 {showAdd === dateStr && (
                   <form
                     onSubmit={(e) => handleAddEntry(e, dateStr)}
-                    className="mt-1 p-1.5 rounded bg-indigo-50 border border-indigo-200 space-y-1"
+                    className="mt-1 p-1.5 rounded-xl bg-stone-50 border border-stone-200/60 space-y-1"
                   >
-                    <input
+                    <Input
                       type="time"
                       value={addForm.scheduled_time}
                       onChange={(e) =>
@@ -471,14 +508,14 @@ const CalendarPage = memo(function CalendarPage() {
                           scheduled_time: e.target.value,
                         })
                       }
-                      className="w-full border rounded px-1 py-0.5 text-sm"
+                      className="h-7 text-sm px-1 rounded-lg border-stone-200"
                     />
                     <select
                       value={addForm.pillar_id}
                       onChange={(e) =>
                         setAddForm({ ...addForm, pillar_id: e.target.value })
                       }
-                      className="w-full border rounded px-1 py-0.5 text-sm"
+                      className={selectCompactClass}
                     >
                       <option value="">Pillar</option>
                       {pillars.map((p) => (
@@ -493,7 +530,7 @@ const CalendarPage = memo(function CalendarPage() {
                         onChange={(e) =>
                           setAddForm({ ...addForm, draft_id: e.target.value })
                         }
-                        className="w-full border rounded px-1 py-0.5 text-sm"
+                        className={selectCompactClass}
                       >
                         <option value="">Link draft...</option>
                         {drafts.map((d) => (
@@ -509,7 +546,7 @@ const CalendarPage = memo(function CalendarPage() {
                         onChange={(e) =>
                           setAddForm({ ...addForm, series_id: e.target.value })
                         }
-                        className="w-full border rounded px-1 py-0.5 text-sm"
+                        className={selectCompactClass}
                       >
                         <option value="">Series...</option>
                         {seriesList.map((s) => (
@@ -519,29 +556,32 @@ const CalendarPage = memo(function CalendarPage() {
                         ))}
                       </select>
                     )}
-                    <input
+                    <Input
                       type="text"
                       value={addForm.notes}
                       onChange={(e) =>
                         setAddForm({ ...addForm, notes: e.target.value })
                       }
-                      className="w-full border rounded px-1 py-0.5 text-sm"
+                      className="h-7 text-sm px-1 rounded-lg border-stone-200"
                       placeholder="Notes..."
                     />
                     <div className="flex gap-1">
-                      <button
+                      <Button
                         type="submit"
-                        className="px-1.5 py-0.5 bg-indigo-600 text-white text-xs rounded"
+                        size="xs"
+                        className="bg-stone-900 text-white hover:bg-stone-800"
                       >
                         Add
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
+                        size="xs"
                         onClick={() => setShowAdd(null)}
-                        className="px-1.5 py-0.5 text-gray-600 text-xs rounded border"
+                        className="border-stone-200 text-stone-600"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </form>
                 )}
@@ -552,51 +592,50 @@ const CalendarPage = memo(function CalendarPage() {
       </div>
 
       {/* Mark as Posted Modal */}
-      {markPostModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 backdrop-blur-sm">
-          <form
-            onSubmit={handleMarkPosted}
-            className="bg-white rounded-xl p-6 w-full max-w-[calc(100vw-2rem)] sm:max-w-lg shadow-xl space-y-4 mx-4 sm:mx-0"
-          >
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+      <Dialog
+        open={markPostModal !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setMarkPostModal(null);
+            setPostForm({ content: "", post_url: "", post_type: "text", posted_at: "" });
+          }
+        }}
+      >
+        <DialogContent className="rounded-2xl border-stone-200/60">
+          <form onSubmit={handleMarkPosted} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-stone-900">
+                <CheckCircle className="w-5 h-5 text-emerald-600" />
                 Mark as Posted
-              </h3>
-              <button
-                type="button"
-                onClick={() => setMarkPostModal(null)}
-                className="p-1.5 hover:bg-gray-100 rounded-lg"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
-            <p className="text-sm text-gray-500">
-              Create a post record for this calendar entry.
-              {markPostModal.notes && (
-                <span className="block mt-1 font-medium text-gray-700">
-                  {markPostModal.notes}
-                </span>
-              )}
-            </p>
+              </DialogTitle>
+              <DialogDescription className="text-stone-500">
+                Create a post record for this calendar entry.
+                {markPostModal?.notes && (
+                  <span className="block mt-1 font-medium text-stone-700">
+                    {markPostModal.notes}
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-stone-700 mb-1">
                 Post Content
               </label>
-              <textarea
+              <Textarea
                 value={postForm.content}
                 onChange={(e) =>
                   setPostForm({ ...postForm, content: e.target.value })
                 }
                 rows={6}
-                className={inputClass}
+                className="rounded-xl border-stone-200 bg-stone-50/50 focus:bg-white text-sm"
                 placeholder="Paste the published post content..."
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-stone-700 mb-1">
                   Post Type
                 </label>
                 <select
@@ -604,7 +643,7 @@ const CalendarPage = memo(function CalendarPage() {
                   onChange={(e) =>
                     setPostForm({ ...postForm, post_type: e.target.value })
                   }
-                  className={inputClass}
+                  className={selectClass}
                 >
                   <option value="text">Text</option>
                   <option value="carousel">Carousel</option>
@@ -616,51 +655,53 @@ const CalendarPage = memo(function CalendarPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-stone-700 mb-1">
                   Posted At
                 </label>
-                <input
+                <Input
                   type="datetime-local"
                   value={postForm.posted_at}
                   onChange={(e) =>
                     setPostForm({ ...postForm, posted_at: e.target.value })
                   }
-                  className={inputClass}
+                  className="rounded-xl border-stone-200 bg-stone-50/50 focus:bg-white text-sm"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-stone-700 mb-1">
                 Post URL
               </label>
-              <input
+              <Input
                 type="url"
                 value={postForm.post_url}
                 onChange={(e) =>
                   setPostForm({ ...postForm, post_url: e.target.value })
                 }
-                className={inputClass}
+                className="rounded-xl border-stone-200 bg-stone-50/50 focus:bg-white text-sm"
                 placeholder="https://linkedin.com/posts/..."
               />
             </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-              >
-                Create Post & Mark Posted
-              </button>
-              <button
+
+            <DialogFooter className="pt-2">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setMarkPostModal(null)}
-                className="px-5 py-2.5 text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                className="border-stone-200 text-stone-700 hover:bg-stone-50"
               >
                 Cancel
-              </button>
-            </div>
+              </Button>
+              <Button
+                type="submit"
+                className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+              >
+                Create Post & Mark Posted
+              </Button>
+            </DialogFooter>
           </form>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });

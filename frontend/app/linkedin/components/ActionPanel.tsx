@@ -3,6 +3,7 @@
 import { memo, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { AlertCircle, Sparkles, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { Actions } from "@/types/linkedin";
 
 interface ActionPanelProps {
@@ -43,8 +44,8 @@ const ActionPanel = memo(function ActionPanel({ onAnalyze }: ActionPanelProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-amber-200 shadow-sm p-5 space-y-3">
-      <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+    <div className="bg-white rounded-2xl border border-amber-200/60 p-5 space-y-3">
+      <h2 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
         <AlertCircle className="w-4 h-4 text-amber-500" />
         Action Needed
       </h2>
@@ -53,12 +54,12 @@ const ActionPanel = memo(function ActionPanel({ onAnalyze }: ActionPanelProps) {
         <Link
           key={`${item.post_id}-${item.due_label}`}
           href="/linkedin/posts"
-          className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors"
+          className="flex items-start gap-3 p-3 bg-amber-50/80 border border-amber-100 rounded-xl hover:bg-amber-100/60 transition-colors"
         >
           <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div className="min-w-0">
             <p className="text-xs font-semibold text-amber-700">{item.due_label}</p>
-            <p className="text-xs text-gray-600 truncate mt-0.5">{item.content_preview}</p>
+            <p className="text-xs text-stone-600 truncate mt-0.5">{item.content_preview}</p>
           </div>
         </Link>
       ))}
@@ -66,19 +67,20 @@ const ActionPanel = memo(function ActionPanel({ onAnalyze }: ActionPanelProps) {
       {unanalyzed_posts.map((post) => (
         <div
           key={post.id}
-          className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg"
+          className="flex items-start gap-3 p-3 bg-stone-50 border border-stone-200/60 rounded-xl"
         >
-          <Sparkles className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+          <Sparkles className="w-4 h-4 text-stone-400 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-600 truncate">{post.content_preview}</p>
+            <p className="text-xs text-stone-600 truncate">{post.content_preview}</p>
           </div>
-          <button
+          <Button
+            size="sm"
             onClick={() => handleAnalyze(post.id)}
             disabled={analyzing === post.id}
-            className="shrink-0 text-xs px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
+            className="shrink-0 rounded-xl text-xs h-7 active:scale-[0.98] transition-all"
           >
             {analyzing === post.id ? "..." : "Analyze"}
-          </button>
+          </Button>
         </div>
       ))}
     </div>

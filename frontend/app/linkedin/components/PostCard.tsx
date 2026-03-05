@@ -17,6 +17,8 @@ import {
   Send,
   Clock,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { Post, ExpandedMetrics } from "@/types/linkedin";
 
 interface PostCardProps {
@@ -61,10 +63,8 @@ const PostCard = memo(function PostCard({
     }
   })();
 
-  const badgeBase = "bg-gray-100 text-gray-600";
-
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-2xl border border-stone-200/60 overflow-hidden hover:shadow-[var(--shadow-card-hover)] transition-all duration-200">
       {/* Top color bar */}
       {pillarColor && (
         <div className="h-1" style={{ backgroundColor: pillarColor }} />
@@ -75,46 +75,45 @@ const PostCard = memo(function PostCard({
           <div className="flex-1 min-w-0">
             {/* Header badges */}
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              {/* Classification — color-coded (most important signal) */}
               {post.classification === "hit" && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-green-100 text-green-700">
+                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-50">
                   Hit
-                </span>
+                </Badge>
               )}
               {post.classification === "miss" && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-red-100 text-red-700">
+                <Badge variant="secondary" className="bg-red-50 text-red-600 border-red-200/60 hover:bg-red-50">
                   Miss
-                </span>
+                </Badge>
               )}
               {post.classification === "average" && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-500">
+                <Badge variant="secondary" className="bg-stone-100 text-stone-500 border-stone-200/60 hover:bg-stone-100">
                   Avg
-                </span>
+                </Badge>
               )}
-              {/* Descriptive badges — uniform gray */}
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${badgeBase}`}>
+              <Badge variant="secondary" className="bg-stone-100 text-stone-600 border-stone-200/60 hover:bg-stone-100">
                 {post.post_type}
-              </span>
+              </Badge>
               {pillarName && (
-                <span
-                  className="text-xs font-medium px-2 py-0.5 rounded-md"
+                <Badge
+                  variant="secondary"
+                  className="border-transparent hover:bg-transparent"
                   style={{ backgroundColor: `${pillarColor}18`, color: pillarColor }}
                 >
                   {pillarName}
-                </span>
+                </Badge>
               )}
               {post.hook_style && (
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${badgeBase}`}>
+                <Badge variant="secondary" className="bg-stone-100 text-stone-600 border-stone-200/60 hover:bg-stone-100">
                   {post.hook_style}
-                </span>
+                </Badge>
               )}
               {post.cta_type && post.cta_type !== "none" && (
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${badgeBase}`}>
+                <Badge variant="secondary" className="bg-stone-100 text-stone-600 border-stone-200/60 hover:bg-stone-100">
                   {post.cta_type}
-                </span>
+                </Badge>
               )}
               {post.posted_at && (
-                <span className="text-[11px] text-gray-400 ml-auto">
+                <span className="text-[11px] text-stone-400 ml-auto">
                   {new Date(post.posted_at).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
@@ -125,7 +124,7 @@ const PostCard = memo(function PostCard({
             </div>
 
             {/* Content preview */}
-            <p className="text-sm text-gray-800 leading-relaxed line-clamp-3 mb-3">
+            <p className="text-sm text-stone-700 leading-relaxed line-clamp-3 mb-3">
               {post.content}
             </p>
 
@@ -135,7 +134,7 @@ const PostCard = memo(function PostCard({
                 {tags.map((tag: string) => (
                   <span
                     key={tag}
-                    className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full"
+                    className="text-xs bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full"
                   >
                     #{tag}
                   </span>
@@ -145,12 +144,11 @@ const PostCard = memo(function PostCard({
 
             {/* Expanded Metrics */}
             {latestMetrics && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                {/* Elapsed time since post */}
+              <div className="mt-3 pt-3 border-t border-stone-100">
                 {formatElapsed(latestMetrics.snapshot_at, post.posted_at) && (
                   <div className="flex items-center gap-1.5 mb-2">
-                    <Clock className="w-3 h-3 text-gray-400" />
-                    <span className="text-xs text-gray-400">
+                    <Clock className="w-3 h-3 text-stone-400" />
+                    <span className="text-xs text-stone-400">
                       Snapshot at {formatElapsed(latestMetrics.snapshot_at, post.posted_at)} after posting
                     </span>
                   </div>
@@ -170,14 +168,14 @@ const PostCard = memo(function PostCard({
 
                 {/* Engagement score bar */}
                 <div className="mt-3 flex items-center gap-3">
-                  <span className="text-xs font-medium text-gray-500 shrink-0 w-28">Engagement</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-2">
+                  <span className="text-xs font-medium text-stone-500 shrink-0 w-28">Engagement</span>
+                  <div className="flex-1 bg-stone-100 rounded-full h-2">
                     <div
-                      className="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all"
+                      className="h-2 rounded-full bg-stone-600 transition-all"
                       style={{ width: `${Math.min(100, latestMetrics.engagement_score * 100 * 10)}%` }}
                     />
                   </div>
-                  <span className="text-xs font-bold text-indigo-600 shrink-0">
+                  <span className="text-xs font-semibold text-stone-700 shrink-0">
                     {(latestMetrics.engagement_score * 100).toFixed(2)}%
                   </span>
                 </div>
@@ -185,58 +183,66 @@ const PostCard = memo(function PostCard({
             )}
 
             {/* Word count */}
-            <div className="mt-2 text-xs text-gray-400">
+            <div className="mt-2 text-xs text-stone-400">
               {post.word_count} words
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex flex-col gap-1 shrink-0">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl"
               onClick={(e) => { e.stopPropagation(); onAddMetrics(post.id); }}
-              className="p-2 rounded-lg hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 transition-colors"
               title="Update metrics"
               aria-label="Update metrics"
             >
               <BarChart3 className="w-4 h-4" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl"
               onClick={(e) => { e.stopPropagation(); onAnalyze(post.id); }}
-              className="p-2 rounded-lg hover:bg-purple-50 text-gray-400 hover:text-purple-600 transition-colors"
               title="Analyze with AI"
               aria-label="Analyze with AI"
             >
               <Sparkles className="w-4 h-4" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl"
               onClick={(e) => { e.stopPropagation(); onEdit(post.id); }}
-              className="p-2 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors"
               title="Edit post"
               aria-label="Edit post"
             >
               <Pencil className="w-4 h-4" />
-            </button>
+            </Button>
             {post.post_url && (
               <a
                 href={post.post_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                className="inline-flex items-center justify-center h-8 w-8 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-colors"
                 title="Open on LinkedIn"
                 aria-label="Open on LinkedIn"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
             )}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-xl"
               onClick={(e) => { e.stopPropagation(); onDelete(post.id); }}
-              className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
               title="Delete"
               aria-label="Delete post"
             >
               <Trash2 className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -257,11 +263,11 @@ function MetricPill({
 }) {
   if (!value && value !== 0) return null;
   return (
-    <div className={`flex items-center gap-1.5 text-xs ${accent ? "text-purple-600" : "text-gray-600"}`}>
+    <div className={`flex items-center gap-1.5 text-xs ${accent ? "text-stone-700 font-medium" : "text-stone-600"}`}>
       <Icon className="w-3.5 h-3.5 shrink-0" />
       <div>
         <span className="font-semibold">{value.toLocaleString()}</span>
-        <span className="text-gray-400 ml-1 hidden sm:inline">{label}</span>
+        <span className="text-stone-400 ml-1 hidden sm:inline">{label}</span>
       </div>
     </div>
   );

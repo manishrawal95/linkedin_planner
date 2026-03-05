@@ -29,14 +29,16 @@ import {
   CartesianGrid,
   Cell,
   Legend,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
 } from "recharts";
 
 import type { AnalyticsData, PostEntry } from "@/types/linkedin";
+import { Badge } from "@/components/ui/badge";
+import {
+  chartAxisStyle,
+  chartGridStyle,
+  chartTooltipStyle,
+  CHART_COLORS,
+} from "@/lib/chart-theme";
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
@@ -80,15 +82,6 @@ const HOOK_STYLE_COLORS: Record<string, string> = {
   statement: "#6b7280",
 };
 
-/* ── Tooltip styles ───────────────────────────────────────────── */
-
-const tooltipStyle = {
-  fontSize: 12,
-  borderRadius: 8,
-  border: "1px solid #e5e7eb",
-  backgroundColor: "#fff",
-};
-
 /* ── Main Component ───────────────────────────────────────────── */
 
 const AnalyticsPage = memo(function AnalyticsPage() {
@@ -114,24 +107,25 @@ const AnalyticsPage = memo(function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-stone-600" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-indigo-600" />
+      <div className="max-w-6xl mx-auto space-y-6">
+        <h1 className="text-2xl font-semibold text-stone-900 tracking-tight">
           Analytics
         </h1>
-        <div className="mt-8 text-center py-16 bg-white rounded-xl border border-gray-200">
-          <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-600">
+        <div className="mt-8 text-center py-16 bg-white rounded-2xl border border-stone-200/60">
+          <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <BarChart3 className="w-8 h-8 text-stone-400" />
+          </div>
+          <p className="text-sm font-medium text-stone-600">
             No analytics data available
           </p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-stone-500 mt-1">
             Add posts with metrics to start seeing insights
           </p>
         </div>
@@ -178,19 +172,18 @@ const AnalyticsPage = memo(function AnalyticsPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       {/* ── 1. Header ─────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-indigo-600" />
+        <h1 className="text-2xl font-semibold text-stone-900 tracking-tight">
           Analytics
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-stone-500 mt-1">
           Comprehensive performance breakdown across all your content
         </p>
       </div>
 
       {/* ── 2. Monthly Trend (full width) ─────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-gray-400" />
+      <div className="bg-white rounded-2xl border border-stone-200/60 p-5">
+        <h2 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-stone-400" />
           Monthly Trend
         </h2>
         {trendData.length > 0 ? (
@@ -198,42 +191,42 @@ const AnalyticsPage = memo(function AnalyticsPage() {
             <ComposedChart data={trendData}>
               <defs>
                 <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0.3} />
+                  <stop offset="0%" stopColor={CHART_COLORS.primary} stopOpacity={0.8} />
+                  <stop offset="100%" stopColor={CHART_COLORS.primary} stopOpacity={0.3} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+              <CartesianGrid {...chartGridStyle} />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 11, fill: "#111827" }}
-                stroke="#3949AB"
+                tick={chartAxisStyle}
+                stroke={chartGridStyle.stroke}
               />
               <YAxis
                 yAxisId="left"
-                tick={{ fontSize: 11, fill: "#111827" }}
-                stroke="#3949AB"
+                tick={chartAxisStyle}
+                stroke={chartGridStyle.stroke}
                 label={{
                   value: "Posts",
                   angle: -90,
                   position: "insideLeft",
-                  style: { fontSize: 11, fill: "#111827" },
+                  style: { fontSize: 11, fill: CHART_COLORS.secondary },
                 }}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                tick={{ fontSize: 11, fill: "#111827" }}
-                stroke="#3949AB"
+                tick={chartAxisStyle}
+                stroke={chartGridStyle.stroke}
                 unit="%"
                 label={{
                   value: "Engagement",
                   angle: 90,
                   position: "insideRight",
-                  style: { fontSize: 11, fill: "#111827" },
+                  style: { fontSize: 11, fill: CHART_COLORS.secondary },
                 }}
               />
               <Tooltip
-                contentStyle={tooltipStyle}
+                contentStyle={chartTooltipStyle.contentStyle}
                 formatter={(value: number | undefined, name?: string) => {
                   const v = value ?? 0;
                   if (name === "engagementPct") return [`${v}%`, "Avg Engagement"];
@@ -260,9 +253,9 @@ const AnalyticsPage = memo(function AnalyticsPage() {
                 yAxisId="right"
                 type="monotone"
                 dataKey="engagementPct"
-                stroke="#f59e0b"
+                stroke={CHART_COLORS.warning}
                 strokeWidth={2}
-                dot={{ r: 4, fill: "#f59e0b" }}
+                dot={{ r: 4, fill: CHART_COLORS.warning }}
                 activeDot={{ r: 6 }}
               />
             </ComposedChart>
@@ -275,30 +268,30 @@ const AnalyticsPage = memo(function AnalyticsPage() {
       {/* ── Row: Pillar + Post Type ──────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 3. Pillar Performance */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-gray-400" />
+        <div className="bg-white rounded-2xl border border-stone-200/60 p-5">
+          <h2 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-stone-400" />
             Pillar Performance
           </h2>
           {pillarData.length > 0 ? (
             <ResponsiveContainer width="100%" height={Math.max(200, pillarData.length * 48)}>
               <BarChart data={pillarData} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
+                <CartesianGrid {...chartGridStyle} horizontal={false} />
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11, fill: "#111827" }}
-                  stroke="#3949AB"
+                  tick={chartAxisStyle}
+                  stroke={chartGridStyle.stroke}
                   tickFormatter={(v) => `${(v * 100).toFixed(1)}%`}
                 />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: "#111827" }}
-                  stroke="#3949AB"
+                  tick={chartAxisStyle}
+                  stroke={chartGridStyle.stroke}
                   width={100}
                 />
                 <Tooltip
-                  contentStyle={tooltipStyle}
+                  contentStyle={chartTooltipStyle.contentStyle}
                   formatter={(value: number | undefined) => [pct(value ?? 0), "Avg Engagement"]}
                   labelFormatter={(label: React.ReactNode) => label}
                 />
@@ -317,14 +310,14 @@ const AnalyticsPage = memo(function AnalyticsPage() {
               {pillarData.map((p) => (
                 <div
                   key={p.id}
-                  className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2"
+                  className="flex items-center gap-2 text-xs text-stone-600 bg-stone-50 rounded-lg px-3 py-2"
                 >
                   <div
                     className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: p.color }}
                   />
                   <span className="truncate font-medium">{p.name}</span>
-                  <span className="ml-auto text-gray-400">{p.post_count} posts</span>
+                  <span className="ml-auto text-stone-400">{p.post_count} posts</span>
                 </div>
               ))}
             </div>
@@ -332,36 +325,36 @@ const AnalyticsPage = memo(function AnalyticsPage() {
         </div>
 
         {/* 4. Post Type Performance */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Type className="w-4 h-4 text-gray-400" />
+        <div className="bg-white rounded-2xl border border-stone-200/60 p-5">
+          <h2 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+            <Type className="w-4 h-4 text-stone-400" />
             Post Type Performance
           </h2>
           {typeData.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={typeData} margin={{ bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <CartesianGrid {...chartGridStyle} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 11, fill: "#111827" }}
-                    stroke="#3949AB"
+                    tick={chartAxisStyle}
+                    stroke={chartGridStyle.stroke}
                   />
                   <YAxis
                     yAxisId="left"
-                    tick={{ fontSize: 11, fill: "#111827" }}
-                    stroke="#3949AB"
+                    tick={chartAxisStyle}
+                    stroke={chartGridStyle.stroke}
                     unit="%"
                   />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
-                    tick={{ fontSize: 11, fill: "#111827" }}
-                    stroke="#3949AB"
+                    tick={chartAxisStyle}
+                    stroke={chartGridStyle.stroke}
                     tickFormatter={(v) => formatNumber(v)}
                   />
                   <Tooltip
-                    contentStyle={tooltipStyle}
+                    contentStyle={chartTooltipStyle.contentStyle}
                     formatter={(value: number | undefined, name?: string) => {
                       const v = value ?? 0;
                       if (name === "engagementPct") return [`${v}%`, "Avg Engagement"];
@@ -379,13 +372,13 @@ const AnalyticsPage = memo(function AnalyticsPage() {
                   />
                   <Bar yAxisId="left" dataKey="engagementPct" radius={[4, 4, 0, 0]} barSize={24}>
                     {typeData.map((t) => (
-                      <Cell key={t.post_type} fill={TYPE_COLORS[t.post_type] || "#6366f1"} />
+                      <Cell key={t.post_type} fill={TYPE_COLORS[t.post_type] || CHART_COLORS.primary} />
                     ))}
                   </Bar>
                   <Bar
                     yAxisId="right"
                     dataKey="avg_impressions"
-                    fill="#93c5fd"
+                    fill={CHART_COLORS.secondary}
                     radius={[4, 4, 0, 0]}
                     barSize={24}
                   />
@@ -393,17 +386,18 @@ const AnalyticsPage = memo(function AnalyticsPage() {
               </ResponsiveContainer>
               <div className="mt-3 flex flex-wrap gap-2">
                 {typeData.map((t) => (
-                  <span
+                  <Badge
                     key={t.post_type}
-                    className="inline-flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-1.5 border border-gray-100"
+                    variant="secondary"
+                    className="inline-flex items-center gap-1.5 text-xs text-stone-600 bg-stone-50 rounded-lg px-3 py-1.5 border border-stone-200/60 font-normal"
                   >
                     <span
                       className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: TYPE_COLORS[t.post_type] || "#6366f1" }}
+                      style={{ backgroundColor: TYPE_COLORS[t.post_type] || CHART_COLORS.primary }}
                     />
                     {t.label}
-                    <span className="text-gray-400 ml-1">{t.count} posts</span>
-                  </span>
+                    <span className="text-stone-400 ml-1">{t.count} posts</span>
+                  </Badge>
                 ))}
               </div>
             </>
@@ -416,9 +410,9 @@ const AnalyticsPage = memo(function AnalyticsPage() {
       {/* ── Row: Hook Style + Content Length ──────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 5. Hook Style Analysis */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Anchor className="w-4 h-4 text-gray-400" />
+        <div className="bg-white rounded-2xl border border-stone-200/60 p-5">
+          <h2 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+            <Anchor className="w-4 h-4 text-stone-400" />
             Hook Style Analysis
           </h2>
           {hookData.length > 0 ? (
@@ -427,8 +421,8 @@ const AnalyticsPage = memo(function AnalyticsPage() {
                 <span className="w-5 shrink-0" />
                 <span className="w-24 shrink-0" />
                 <span className="flex-1" />
-                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide w-12 text-right shrink-0">Eng %</span>
-                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide shrink-0">Used</span>
+                <span className="text-[11px] font-medium text-stone-500 uppercase tracking-wide w-12 text-right shrink-0">Eng %</span>
+                <span className="text-[11px] font-medium text-stone-500 uppercase tracking-wide shrink-0">Used</span>
               </div>
               {[...hookData]
                 .sort((a, b) => b.engagementPct - a.engagementPct)
@@ -436,31 +430,31 @@ const AnalyticsPage = memo(function AnalyticsPage() {
                   const maxPct = arr[0].engagementPct || 1;
                   return (
                     <div key={h.style} className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-gray-300 w-5 shrink-0 text-right">
+                      <span className="text-xs font-semibold text-stone-400 w-5 shrink-0 text-right">
                         #{i + 1}
                       </span>
                       <div className="flex items-center gap-1.5 w-24 shrink-0">
                         <span
                           className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: HOOK_STYLE_COLORS[h.style] || "#6366f1" }}
+                          style={{ backgroundColor: HOOK_STYLE_COLORS[h.style] || CHART_COLORS.primary }}
                         />
-                        <span className="text-xs font-medium text-gray-700 capitalize truncate">
+                        <span className="text-xs font-medium text-stone-700 capitalize truncate">
                           {h.style}
                         </span>
                       </div>
-                      <div className="flex-1 bg-gray-100 rounded-full h-2">
+                      <div className="flex-1 bg-stone-100 rounded-full h-2">
                         <div
                           className="h-2 rounded-full transition-all"
                           style={{
                             width: `${(h.engagementPct / maxPct) * 100}%`,
-                            backgroundColor: HOOK_STYLE_COLORS[h.style] || "#6366f1",
+                            backgroundColor: HOOK_STYLE_COLORS[h.style] || CHART_COLORS.primary,
                           }}
                         />
                       </div>
-                      <span className="text-xs font-semibold text-gray-600 w-12 text-right shrink-0">
+                      <span className="text-xs font-semibold text-stone-600 w-12 text-right shrink-0">
                         {h.engagementPct}%
                       </span>
-                      <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-500 shrink-0">
+                      <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-500 shrink-0">
                         {h.count}×
                       </span>
                     </div>
@@ -473,45 +467,45 @@ const AnalyticsPage = memo(function AnalyticsPage() {
         </div>
 
         {/* 6. Content Length Sweet Spot */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Lightbulb className="w-4 h-4 text-gray-400" />
+        <div className="bg-white rounded-2xl border border-stone-200/60 p-5">
+          <h2 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+            <Lightbulb className="w-4 h-4 text-stone-400" />
             Content Length Sweet Spot
           </h2>
           {wordData.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={280}>
                 <ScatterChart margin={{ bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <CartesianGrid {...chartGridStyle} />
                   <XAxis
                     type="number"
                     dataKey="word_count"
                     name="Word Count"
-                    tick={{ fontSize: 11, fill: "#111827" }}
-                    stroke="#3949AB"
+                    tick={chartAxisStyle}
+                    stroke={chartGridStyle.stroke}
                     label={{
                       value: "Word Count",
                       position: "insideBottom",
                       offset: -2,
-                      style: { fontSize: 11, fill: "#111827" },
+                      style: { fontSize: 11, fill: CHART_COLORS.secondary },
                     }}
                   />
                   <YAxis
                     type="number"
                     dataKey="engagementPct"
                     name="Engagement"
-                    tick={{ fontSize: 11, fill: "#111827" }}
-                    stroke="#3949AB"
+                    tick={chartAxisStyle}
+                    stroke={chartGridStyle.stroke}
                     unit="%"
                     label={{
                       value: "Engagement",
                       angle: -90,
                       position: "insideLeft",
-                      style: { fontSize: 11, fill: "#111827" },
+                      style: { fontSize: 11, fill: CHART_COLORS.secondary },
                     }}
                   />
                   <Tooltip
-                    contentStyle={tooltipStyle}
+                    contentStyle={chartTooltipStyle.contentStyle}
                     formatter={(value: number | undefined, name?: string) => {
                       const v = value ?? 0;
                       if (name === "Engagement") return [`${v}`, name];
@@ -520,20 +514,20 @@ const AnalyticsPage = memo(function AnalyticsPage() {
                     }}
                     cursor={{ strokeDasharray: "3 3" }}
                   />
-                  <Scatter name="Posts" data={wordData} fill="#6366f1">
+                  <Scatter name="Posts" data={wordData} fill={CHART_COLORS.primary}>
                     {wordData.map((_, index) => (
                       <Cell
                         key={index}
-                        fill="#6366f1"
+                        fill={CHART_COLORS.primary}
                         fillOpacity={0.6}
-                        stroke="#4f46e5"
+                        stroke={CHART_COLORS.accent}
                         strokeWidth={1}
                       />
                     ))}
                   </Scatter>
                 </ScatterChart>
               </ResponsiveContainer>
-              <p className="text-xs text-gray-400 mt-2 text-center">
+              <p className="text-xs text-stone-500 mt-2 text-center">
                 Each dot represents a post. Find your optimal word count range.
               </p>
             </>
@@ -546,8 +540,8 @@ const AnalyticsPage = memo(function AnalyticsPage() {
       {/* ── Row: Top Performers + Underperformers ────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 7. Top Performers */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-stone-200/60 p-5">
+          <h2 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
             <ThumbsUp className="w-4 h-4 text-green-500" />
             Top Performers
           </h2>
@@ -563,8 +557,8 @@ const AnalyticsPage = memo(function AnalyticsPage() {
         </div>
 
         {/* 8. Underperformers */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-2xl border border-stone-200/60 p-5">
+          <h2 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
             <ThumbsDown className="w-4 h-4 text-amber-500" />
             Underperformers
           </h2>
@@ -608,11 +602,11 @@ function PostRow({
   return (
     <Link
       href={`/linkedin/posts/${post.id}`}
-      className="block p-3 rounded-lg bg-gray-50 border border-gray-100 hover:bg-gray-100 hover:border-gray-200 transition-all group"
+      className="block p-3 rounded-lg bg-stone-50 border border-stone-200/60 hover:bg-stone-100 hover:border-stone-300 transition-all group"
     >
       <div className="flex items-start gap-3">
         <span
-          className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+          className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
             variant === "top"
               ? "bg-green-100 text-green-700"
               : "bg-amber-100 text-amber-700"
@@ -621,10 +615,10 @@ function PostRow({
           {rank}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed group-hover:text-gray-900">
+          <p className="text-sm text-stone-700 line-clamp-2 leading-relaxed group-hover:text-stone-900">
             {post.content}
           </p>
-          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 flex-wrap">
+          <div className="flex items-center gap-3 mt-2 text-xs text-stone-500 flex-wrap">
             <span className="flex items-center gap-1">
               <Eye className="w-3 h-3" />
               {formatNumber(post.impressions)}
@@ -660,8 +654,11 @@ function PostRow({
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="h-[220px] flex items-center justify-center text-sm text-gray-400">
-      {message}
+    <div className="h-[220px] flex flex-col items-center justify-center gap-3">
+      <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center">
+        <BarChart3 className="w-7 h-7 text-stone-400" />
+      </div>
+      <p className="text-sm text-stone-500">{message}</p>
     </div>
   );
 }
